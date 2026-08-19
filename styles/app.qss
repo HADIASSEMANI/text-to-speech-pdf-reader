@@ -1,0 +1,258 @@
+QMainWindow {
+    background: #0d0f12;
+}
+
+QWidget {
+    color: #e6e8eb;
+    font-family: "Segoe UI";
+    font-size: 14px;
+}
+
+QLabel#pageTitle {
+    font-size: 30px;
+    font-weight: 600;
+}
+
+QLabel#readerTitle {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+QLabel#readerStatus {
+    color: #969ba4;
+    font-size: 13px;
+}
+
+QLabel#secondaryText {
+    color: #969ba4;
+}
+
+
+/* ----------------------------------
+   Reading surface
+---------------------------------- */
+
+QTextEdit#readerText {
+    background: #15181d;
+
+    border: 1px solid #22262d;
+    border-radius: 18px;
+
+    padding: 32px;
+
+    font-size: 18px;
+}
+
+
+/* ----------------------------------
+   Buttons
+---------------------------------- */
+
+QPushButton {
+    background: #191c21;
+
+    border: 1px solid #292e36;
+
+    border-radius: 10px;
+
+    padding: 10px 16px;
+
+    min-height: 20px;
+}
+
+QPushButton:hover {
+    background: #22262d;
+
+    border-color: #383f49;
+}
+
+QPushButton:pressed {
+    background: #292e36;
+}
+
+QPushButton:disabled {
+    color: #5a5f68;
+    border-color: #22262d;
+}
+
+
+QPushButton#primaryButton {
+    background: #f1f3f5;
+    color: #121417;
+
+    border: none;
+
+    font-weight: 600;
+}
+
+
+QPushButton#primaryButton:hover {
+    background: #ffffff;
+}
+
+
+QPushButton#primaryPlayerButton {
+    min-width: 80px;
+    min-height: 36px;
+
+    border-radius: 18px;
+
+    background: #f1f3f5;
+    color: #111317;
+
+    font-weight: 600;
+}
+
+
+QPushButton#ghostButton {
+    background: transparent;
+    border: none;
+
+    color: #a8adb5;
+}
+
+
+QPushButton#ghostButton:hover {
+    color: #ffffff;
+}
+
+
+/* ----------------------------------
+   Library
+---------------------------------- */
+
+QPushButton#bookCard {
+    text-align: left;
+
+    background: #15181d;
+
+    border: 1px solid #22262d;
+    border-radius: 14px;
+
+    padding: 18px;
+
+    font-size: 16px;
+}
+
+
+QPushButton#bookCard:hover {
+    background: #1b1f25;
+
+    border-color: #353b45;
+}
+
+
+/* ----------------------------------
+   SpinBox
+---------------------------------- */
+
+QSpinBox,
+QDoubleSpinBox,
+QComboBox {
+    background: #15181d;
+
+    border: 1px solid #292e36;
+    border-radius: 8px;
+
+    padding: 7px 10px;
+}
+
+
+/* ----------------------------------
+   Slider
+---------------------------------- */
+
+QSlider::groove:horizontal {
+    height: 5px;
+
+    background: #272c33;
+
+    border-radius: 2px;
+}
+
+
+QSlider::handle:horizontal {
+    width: 16px;
+    height: 16px;
+
+    margin: -6px 0;
+
+    border-radius: 8px;
+
+    background: #f2f3f5;
+}
+
+
+QSlider::sub-page:horizontal {
+    background: #8c929c;
+
+    border-radius: 2px;
+}
+
+
+/* ----------------------------------
+   Loading screen
+---------------------------------- */
+
+QProgressBar {
+    background: #1b1e23;
+
+    border: none;
+    border-radius: 3px;
+
+    min-height: 6px;
+    max-height: 6px;
+}
+
+
+QProgressBar::chunk {
+    background: #e7e9ec;
+
+    border-radius: 3px;
+}
+
+
+/* ----------------------------------
+   Scroll area
+---------------------------------- */
+
+QScrollArea {
+    border: none;
+    background: transparent;
+}
+
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+}
+
+
+QScrollBar::handle:vertical {
+    background: #30353d;
+
+    border-radius: 5px;
+
+    min-height: 30px;
+}
+
+
+QPushButton#bookCardMissing {
+    text-align: left;
+
+    background: #15181d;
+
+    border: 1px solid #3a2a2d;
+    border-radius: 14px;
+
+    padding: 18px;
+
+    font-size: 16px;
+
+    color: #8c929b;
+}
+
+
+QPushButton#bookCardMissing:hover {
+    border-color: #5a3a40;
+}
