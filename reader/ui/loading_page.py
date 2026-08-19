@@ -3,8 +3,9 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QLabel,
-    QProgressBar,
 )
+
+from reader.ui.widgets.rainbow_spinner import RainbowSpinner
 
 
 class LoadingPage(QWidget):
@@ -16,6 +17,13 @@ class LoadingPage(QWidget):
         root.setContentsMargins(40, 40, 40, 40)
 
         root.addStretch()
+
+        self.spinner = RainbowSpinner()
+
+        root.addWidget(
+            self.spinner,
+            alignment=Qt.AlignmentFlag.AlignCenter,
+        )
 
         self.title = QLabel("Loading book...")
         self.title.setObjectName("pageTitle")
@@ -29,14 +37,20 @@ class LoadingPage(QWidget):
 
         root.addWidget(self.status)
 
-        self.progress = QProgressBar()
+        self.percentage = QLabel("0%")
+        self.percentage.setObjectName("readerStatus")
+        self.percentage.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # 0, 0 makes it indeterminate
-        self.progress.setRange(0, 0)
-
-        root.addWidget(self.progress)
+        root.addWidget(self.percentage)
 
         root.addStretch()
 
     def set_status(self, text: str):
         self.status.setText(text)
+
+    def set_title(self, text: str):
+        self.title.setText(text)
+
+    def set_progress(self, value: int):
+        value = max(0, min(int(value), 100))
+        self.percentage.setText(f"{value}%")

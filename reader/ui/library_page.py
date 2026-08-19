@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QLabel,
     QPushButton,
     QScrollArea,
@@ -15,6 +16,7 @@ from reader.progress import get_recent_books
 class LibraryPage(QWidget):
     open_document_requested = Signal()
     book_requested = Signal(str)
+    delete_book_requested = Signal(str, str)
 
     def __init__(self):
         super().__init__()
@@ -78,13 +80,29 @@ class LibraryPage(QWidget):
                 "File missing" if missing else f"Segment {resume_segment} · Continue"
             )
 
-            button = QPushButton(f"{book.title}\n{file_type} · {subtitle}")
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(10)
+
+            button = QPushButton(f"{book.title} · {file_type} · {subtitle}")
             button.setObjectName("bookCardMissing" if missing else "bookCard")
 
             button.clicked.connect(
                 lambda checked=False, path=book.path: self.book_requested.emit(path)
             )
 
-            self.books_layout.addWidget(button)
+            delete_button = QPushButton("Delete")
+            delete_button.setObjectName("deleteBookButton")
+            delete_button.setToolTip("Remove this book from the library")
+            delete_button.clicked.connect(
+                lambda checked=False, path=book.path, title=book.title:
+                self.delete_book_requested.emit(path, title)
+            )
+
+            row_layout.addWidget(button, 1)
+            row_layout.addWidget(delete_button)
+
+            self.books_layout.addWidget(row)
 
         self.books_layout.addStretch()

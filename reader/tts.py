@@ -1,15 +1,33 @@
 import json
+import os
 import warnings
 import soundfile as sf
 import numpy as np
 
 from pathlib import Path
 from kokoro import KPipeline
+
+import torch
 from reader.models import TextCue
 from reader.paths import cache_dir
 
 
 CACHE_DIR = cache_dir()
+
+# Kokoro synthesizes on the reader's background worker. Left at its default,
+# torch claims every core, the GUI thread loses its slice, and the whole app
+# stutters for as long as the next segment is being prepared. Two cores are
+# reserved: one for the interface, one for playback.
+_TTS_THREADS = max(1, (os.cpu_count() or 3) - 2)
+
+torch.set_num_threads(_TTS_THREADS)
+
+try:
+    torch.set_num_interop_threads(1)
+except RuntimeError:
+    # Torch only accepts this before its inter-op pool starts. If something
+    # already started it, the intra-op cap above still does the real work.
+    pass
 
 warnings.filterwarnings(
     "ignore",
@@ -44,7 +62,8 @@ class KokoroTTS:
     def generate(
         self,
         text: str,
-        output_path: str
+        output_path: str,
+        on_progress=None,
     ) -> list[TextCue]:
 
         output = Path(
@@ -59,6 +78,11 @@ class KokoroTTS:
         audio_parts = []
         cues = []
         current_time = 0.0
+        processed_characters = 0
+        total_characters = max(len(text), 1)
+
+        if on_progress is not None:
+            on_progress(0)
 
         generator = self.pipeline(
             text,
@@ -87,6 +111,16 @@ class KokoroTTS:
             )
 
             current_time += duration
+
+            processed_characters += len(graphemes)
+
+            if on_progress is not None:
+                on_progress(
+                    min(
+                        int(processed_characters / total_characters * 95),
+                        95,
+                    )
+                )
         
         if not audio_parts:
             raise RuntimeError(
@@ -113,6 +147,9 @@ class KokoroTTS:
             output,
             cues
         )
+
+        if on_progress is not None:
+            on_progress(100)
 
 
         return cues

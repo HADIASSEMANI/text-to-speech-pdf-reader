@@ -8,6 +8,7 @@ class BookLoaderWorker(QObject):
     finished = Signal(object)
     failed = Signal(str)
     status_changed = Signal(str)
+    progress_changed = Signal(int)
 
     def __init__(
         self,
@@ -30,6 +31,21 @@ class BookLoaderWorker(QObject):
     @Slot()
     def run(self):
         try:
+            stage_progress = {
+                "Reading saved progress...": 5,
+                "Extracting PDF...": 12,
+                "Extracting EPUB...": 12,
+                "Analyzing document layout...": 32,
+                "Preparing narration...": 48,
+                "Creating segments...": 62,
+                "Reading table of contents...": 72,
+                "Loading speech model...": 82,
+            }
+
+            def report_status(message: str):
+                self.status_changed.emit(message)
+                self.progress_changed.emit(stage_progress.get(message, 0))
+
             prepared_book = prepare_book(
                 self.path,
                 voice=self.voice,
@@ -37,9 +53,10 @@ class BookLoaderWorker(QObject):
                 read_footnotes=self.read_footnotes,
                 read_captions=self.read_captions,
                 read_sidebars=self.read_sidebars,
-                on_status=self.status_changed.emit,
+                on_status=report_status,
             )
 
+            self.progress_changed.emit(100)
             self.finished.emit(prepared_book)
 
         except Exception as error:

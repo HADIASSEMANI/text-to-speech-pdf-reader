@@ -1,4 +1,7 @@
+import os
+import sys
 import time
+from bisect import bisect_right
 from pathlib import Path
 
 from concurrent.futures import ThreadPoolExecutor
@@ -8,6 +11,31 @@ from reader.tts import KokoroTTS
 from reader.progress import save_progress
 from reader.models import TextCue
 
+
+
+def _lower_worker_priority():
+    """Run generation below the GUI thread so playback stays responsive.
+
+    Synthesis is patient work; repainting and cue highlighting are not. Left
+    at equal priority the worker takes its full slice and the window stutters
+    for as long as a segment is being prepared.
+    """
+    try:
+        if sys.platform == "win32":
+            import ctypes
+
+            THREAD_PRIORITY_BELOW_NORMAL = -1
+
+            kernel32 = ctypes.windll.kernel32
+
+            kernel32.SetThreadPriority(
+                kernel32.GetCurrentThread(),
+                THREAD_PRIORITY_BELOW_NORMAL,
+            )
+        else:
+            os.nice(5)
+    except Exception as error:
+        print(f"Could not lower generation priority: {error}")
 
 
 class ReaderController:
@@ -38,10 +66,24 @@ class ReaderController:
         # One worker is safest initially because we're using one
         # Kokoro pipeline/model instance.
         self.executor = ThreadPoolExecutor(
-            max_workers=1
+            max_workers=1,
+            thread_name_prefix="tts",
+            initializer=_lower_worker_priority,
         )
 
         self.generating: set[int] = set()
+        self.generation_progress: dict[int, int] = {}
+        self.generation_errors: dict[int, str] = {}
+
+        # Set while the current segment has no audio yet. Playback is
+        # retried from `tick` instead of blocking whoever asked for it.
+        self.awaiting_audio = False
+        self.pending_seek: float | None = None
+
+        # Cue lookup state, rebuilt whenever a segment's cues change.
+        self._cue_list: list[TextCue] | None = None
+        self._cue_starts: list[float] = []
+        self._cue_index = 0
 
         self.running = False
 
@@ -68,13 +110,19 @@ class ReaderController:
                 )
             )
 
+            self.generation_progress[segment.id] = 100
+
             return
 
 
         segment.cues = (
             self.tts.generate(
                 segment.text,
-                segment.audio_path
+                segment.audio_path,
+                on_progress=lambda value: self.generation_progress.__setitem__(
+                    segment.id,
+                    value,
+                ),
             )
         )
 
@@ -85,24 +133,26 @@ class ReaderController:
         segment: Segment
     ):
         if segment.generated:
-            return
+            return None
 
         if segment.id in self.generating:
-            return
+            return self.futures.get(segment.id)
 
         if segment.audio_path is None:
-            return
+            return None
 
         if Path(segment.audio_path).exists():
             segment.generated = True
             segment.cues = self.tts.load_cues(
                 segment.audio_path
             )
-            return
+            self.generation_progress[segment.id] = 100
+            return None
 
         self.generating.add(
             segment.id
         )
+        self.generation_progress[segment.id] = 0
 
         print(
             f"Pre-generating segment "
@@ -127,6 +177,33 @@ class ReaderController:
             )
         )
 
+        return future
+
+    def prepare_segment_audio(self, index: int):
+        if not 0 <= index < len(self.segments):
+            return None
+
+        segment = self.segments[index]
+
+        if segment.audio_path and Path(segment.audio_path).exists():
+            self.ensure_audio(segment)
+            return None
+
+        segment.generated = False
+
+        return self.generate_in_background(segment)
+
+    def get_generation_progress(self, index: int) -> int:
+        if not 0 <= index < len(self.segments):
+            return 0
+
+        segment = self.segments[index]
+
+        return self.generation_progress.get(
+            segment.id,
+            100 if segment.generated else 0,
+        )
+
     def _generation_finished(
         self,
         segment: Segment,
@@ -149,6 +226,8 @@ class ReaderController:
             )
 
         except Exception as error:
+            self.generation_errors[segment.id] = str(error)
+
             print(
                 f"Failed generating "
                 f"segment {segment.id}: "
@@ -172,34 +251,87 @@ class ReaderController:
                 self.segments[index]
             )
 
-    def play_current(self):
+    def _segment_ready(self, segment: Segment) -> bool:
+        """Report whether a segment can start without synthesizing now.
+
+        Loading cues for an already cached file is cheap and happens here;
+        synthesis never does, because this runs on the GUI thread.
+        """
+        if segment.generated:
+            return True
+
+        if segment.audio_path is None:
+            return False
+
+        if segment.id in self.generating:
+            return False
+
+        if not Path(segment.audio_path).exists():
+            return False
+
+        segment.cues = self.tts.load_cues(segment.audio_path)
+        segment.generated = True
+
+        self.generation_progress[segment.id] = 100
+
+        return True
+
+    def take_generation_error(self) -> str | None:
+        """Return and clear the failure recorded for the current segment."""
+        segment = self.get_current_segment()
+
+        if segment is None:
+            return None
+
+        return self.generation_errors.pop(segment.id, None)
+
+    def play_current(self) -> bool:
+        """Start the current segment, or queue its audio and report back.
+
+        This runs on the GUI thread, so it never synthesizes and never waits
+        on a future: a cache miss used to freeze the window for the whole of
+        the generation. Missing audio is requested in the background instead
+        and `tick` retries until it is ready.
+        """
         segment = self.segments[
             self.player.current_index
         ]
 
-        future = self.futures.get(
-            segment.id
-        )
+        if self._segment_ready(segment):
+            self.awaiting_audio = False
 
-        if future is not None:
-            
-            print(
-                f"Waiting for segment "
-                f"{segment.id} to finish generating..."
-            )
+            self.player.play()
 
-            future.result()
-        else:
+            if self.pending_seek is not None:
+                self.player.seek(self.pending_seek)
+                self.pending_seek = None
 
-            self.ensure_audio(
-                segment
-            )
+            # While current segment plays,
+            # prepare upcoming segments.
+            self.preload_upcoming()
 
-        self.player.play()
+            return True
 
-        # While current segment plays,
-        # prepare upcoming segments.
-        self.preload_upcoming()
+        if segment.id in self.generation_errors:
+            # Retrying would resubmit the same failing work on every tick.
+            self.awaiting_audio = False
+            self.running = False
+
+            return False
+
+        self.generate_in_background(segment)
+
+        if segment.id in self.generating or segment.generated:
+            self.awaiting_audio = True
+
+            return False
+
+        # Nothing is generating and nothing can be, so stop rather than spin
+        # on a segment that will never become playable.
+        self.awaiting_audio = False
+        self.running = False
+
+        return False
 
     def next(self):
 
@@ -285,6 +417,8 @@ class ReaderController:
         self.player.current_index = index
         self.player.current_segment = None
         self.running = False
+        self.awaiting_audio = False
+        self.pending_seek = None
 
         save_progress(
             book_id=self.book_id,
@@ -303,6 +437,10 @@ class ReaderController:
 
     def tick(self):
         if not self.running:
+            return
+
+        if self.awaiting_audio:
+            self.play_current()
             return
 
         if self.player.is_paused:
@@ -337,7 +475,16 @@ class ReaderController:
         hear it rather than only to move the playhead.
         """
         if not self.running:
+            # Remember the target: with audio still generating, playback may
+            # only start several ticks from now.
+            self.pending_seek = seconds
+
             self.start()
+
+            if self.awaiting_audio:
+                return
+
+            self.pending_seek = None
 
         self.player.seek(seconds)
 
@@ -358,7 +505,12 @@ class ReaderController:
     def get_current_cue(
         self
     ) -> TextCue | None:
+        """Cue covering the playhead, found without walking every cue.
 
+        This is called on every GUI tick, so it starts from the cue it
+        returned last — which is nearly always still the right one — and
+        falls back to a binary search rather than a scan.
+        """
         segment = (
             self.get_current_segment()
         )
@@ -366,19 +518,34 @@ class ReaderController:
         if segment is None:
             return None
 
-        if not segment.cues:
+        cues = segment.cues
+
+        if not cues:
             return None
+
+        if cues is not self._cue_list:
+            self._cue_list = cues
+            self._cue_starts = [cue.start for cue in cues]
+            self._cue_index = 0
 
         position = self.player.get_playback_position()
 
-        for cue in segment.cues:
+        if 0 <= self._cue_index < len(cues):
+            cue = cues[self._cue_index]
 
-            if (
-                cue.start
-                <= position
-                < cue.end
-            ):
+            if cue.start <= position < cue.end:
                 return cue
+
+        index = bisect_right(self._cue_starts, position) - 1
+
+        if index < 0:
+            return None
+
+        cue = cues[index]
+
+        if cue.start <= position < cue.end:
+            self._cue_index = index
+            return cue
 
         return None
 
@@ -391,6 +558,7 @@ class ReaderController:
         )
 
         self.running = False
+        self.awaiting_audio = False
 
         self.player.stop()
 

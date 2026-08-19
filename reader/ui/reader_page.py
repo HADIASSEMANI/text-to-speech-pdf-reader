@@ -24,6 +24,9 @@ class ReaderPage(QWidget):
         super().__init__()
 
         self.current_cue_offsets = []
+        self._cue_bounds = {}
+        self._highlighted_cue = None
+        self.book_title = "No book"
 
         self._build_ui()
 
@@ -56,7 +59,7 @@ class ReaderPage(QWidget):
 
         chapter_row = QHBoxLayout()
 
-        chapter_label = QLabel("Chapter")
+        chapter_label = QLabel("Navigate")
 
         self.chapter_input = QComboBox()
         self.chapter_input.setVisible(False)
@@ -160,11 +163,19 @@ class ReaderPage(QWidget):
         self.chapter_input.setVisible(has_chapters)
         self.chapter_row_widget.setVisible(has_chapters)
 
-    def set_current_chapter(self, chapter_index: int):
-        if 0 <= chapter_index < self.chapter_input.count():
+    def set_current_chapter(self, chapter_index: int | None):
+        if (
+            chapter_index is not None
+            and 0 <= chapter_index < self.chapter_input.count()
+        ):
             self.chapter_input.blockSignals(True)
             self.chapter_input.setCurrentIndex(chapter_index)
             self.chapter_input.blockSignals(False)
+
+            chapter_title = self.chapter_input.itemText(chapter_index).strip()
+            self.title_label.setText(chapter_title or self.book_title)
+        else:
+            self.title_label.setText(self.book_title)
 
     def set_reader_enabled(self, enabled: bool):
         self.page_input.setEnabled(enabled)
@@ -173,6 +184,7 @@ class ReaderPage(QWidget):
         self.player_controls.set_enabled_controls(enabled)
 
     def set_book(self, title: str, max_page: int):
+        self.book_title = title
         self.title_label.setText(title)
         self.page_input.setMaximum(max(max_page, 1))
 
@@ -189,7 +201,7 @@ class ReaderPage(QWidget):
 
         display_text, offsets = self._build_highlight_text(segment)
 
-        self.current_cue_offsets = offsets
+        self._set_cue_offsets(offsets)
 
         self.text_display.setPlainText(display_text)
 
@@ -227,19 +239,44 @@ class ReaderPage(QWidget):
 
     def refresh_highlight_offsets(self, segment):
         _display_text, offsets = self._build_highlight_text(segment)
+        self._set_cue_offsets(offsets)
+
+    def _set_cue_offsets(self, offsets):
+        """Store cue offsets and the lookup `highlight_cue` reads every tick.
+
+        Keyed by identity because a cue is matched by object, not by text: two
+        sentences in a segment can read the same.
+        """
         self.current_cue_offsets = offsets
 
+        self._cue_bounds = {
+            id(cue): (start, end)
+            for cue, start, end in offsets
+        }
+
+        # The document just changed, so nothing on screen is highlighted.
+        self._highlighted_cue = None
+
     def highlight_cue(self, cue):
-        self.text_display.setExtraSelections([])
-
-        if cue is None:
+        if cue is self._highlighted_cue:
+            # The reader ticks ten times a second. Re-applying the selection
+            # it already shows costs a document re-layout and a repaint for
+            # nothing, which is what made scrolled text feel sticky.
             return
 
-        for stored_cue, start, end in self.current_cue_offsets:
-            if stored_cue is cue:
-                break
-        else:
+        self._highlighted_cue = cue
+
+        bounds = (
+            self._cue_bounds.get(id(cue))
+            if cue is not None
+            else None
+        )
+
+        if bounds is None:
+            self.text_display.setExtraSelections([])
             return
+
+        start, end = bounds
 
         cursor = self.text_display.textCursor()
 
@@ -258,9 +295,11 @@ class ReaderPage(QWidget):
         self.text_display.setExtraSelections([selection])
 
     def clear(self):
+        self.book_title = "No book"
         self.title_label.setText("No book")
         self.status_label.setText("Page --")
         self.text_display.clear()
+        self._set_cue_offsets([])
         self.page_input.setMaximum(1)
         self.page_input.setValue(1)
         self.set_chapters([])

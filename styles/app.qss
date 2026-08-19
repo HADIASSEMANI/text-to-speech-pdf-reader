@@ -141,6 +141,18 @@ QPushButton#bookCard:hover {
     border-color: #353b45;
 }
 
+QPushButton#deleteBookButton {
+    color: #ff9b9b;
+    border-color: #4a2d32;
+    min-width: 64px;
+}
+
+QPushButton#deleteBookButton:hover {
+    color: #ffffff;
+    background: #7a2833;
+    border-color: #a53a48;
+}
+
 
 /* ----------------------------------
    SpinBox
@@ -255,4 +267,126 @@ QPushButton#bookCardMissing {
 
 QPushButton#bookCardMissing:hover {
     border-color: #5a3a40;
+}
+
+
+/* ----------------------------------
+   File picker
+
+   Qt draws this dialog itself, so it inherits the app palette instead of
+   the shell's. Everything it shows needs a background of its own: the base
+   QWidget rule only sets a light text colour.
+---------------------------------- */
+
+QFileDialog {
+    background: #0d0f12;
+}
+
+
+QFileDialog QLabel {
+    color: #b9bec7;
+}
+
+
+QFileDialog QListView,
+QFileDialog QTreeView {
+    background: #12151a;
+    color: #e6e8eb;
+
+    border: 1px solid #292e36;
+    border-radius: 8px;
+
+    outline: none;
+}
+
+
+QFileDialog QListView::item,
+QFileDialog QTreeView::item {
+    padding: 4px;
+
+    border-radius: 4px;
+}
+
+
+QFileDialog QListView::item:hover,
+QFileDialog QTreeView::item:hover {
+    background: #1b1f26;
+}
+
+
+QFileDialog QListView::item:selected,
+QFileDialog QTreeView::item:selected {
+    background: #2a3140;
+    color: #ffffff;
+}
+
+
+QFileDialog QHeaderView::section {
+    background: #191c21;
+    color: #b9bec7;
+
+    border: none;
+
+    padding: 6px;
+}
+
+
+QFileDialog QLineEdit {
+    background: #15181d;
+    color: #e6e8eb;
+
+    border: 1px solid #292e36;
+    border-radius: 8px;
+
+    padding: 7px 10px;
+
+    selection-background-color: #2a3140;
+}
+
+
+QFileDialog QToolButton {
+    background: #191c21;
+
+    border: 1px solid #292e36;
+    border-radius: 8px;
+
+    padding: 5px;
+}
+
+
+QFileDialog QToolButton:hover {
+    background: #22262d;
+
+    border-color: #383f49;
+}
+
+
+QFileDialog QScrollBar:horizontal {
+    background: transparent;
+    height: 10px;
+}
+
+
+QFileDialog QScrollBar::handle:horizontal {
+    background: #30353d;
+
+    border-radius: 5px;
+
+    min-width: 30px;
+}
+
+
+/* The popup is a window of its own, so it is not reached by a
+   `QFileDialog QComboBox` selector. This also fixes the chapter list. */
+
+QComboBox QAbstractItemView {
+    background: #12151a;
+    color: #e6e8eb;
+
+    border: 1px solid #292e36;
+
+    outline: none;
+
+    selection-background-color: #2a3140;
+    selection-color: #ffffff;
 }

@@ -1,0 +1,195 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+import "."
+
+Item {
+    id: root
+
+    property bool shown: false
+
+    opacity: shown ? 1 : 0
+    visible: opacity > 0
+    enabled: shown
+
+    Behavior on opacity {
+        NumberAnimation {
+            duration: Theme.transitionDuration
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    readonly property bool narrow: width < Theme.narrowWidth
+
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: root.narrow ? Theme.spacing : Theme.pageMargin
+
+        spacing: Theme.spacingLarge
+
+        RowLayout {
+            Layout.fillWidth: true
+
+            Label {
+                text: "Settings"
+
+                color: Theme.text
+                font.pixelSize: Theme.fontSizeDisplay
+                font.weight: Font.DemiBold
+
+                Layout.fillWidth: true
+            }
+
+            Button {
+                text: "Done"
+                highlighted: true
+
+                onClicked: vm.closeSettings()
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+
+            color: Theme.surface
+            radius: Theme.radius
+
+            border.width: 1
+            border.color: Theme.border
+
+            implicitHeight: narrationLayout.implicitHeight
+                            + Theme.spacingLarge * 2
+
+            GridLayout {
+                id: narrationLayout
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.margins: Theme.spacingLarge
+
+                // One column when there is no room for a label beside its
+                // control.
+                columns: root.narrow ? 1 : 2
+
+                rowSpacing: Theme.spacing
+                columnSpacing: Theme.spacing
+
+                Label {
+                    text: "Voice"
+                    color: Theme.textMuted
+                }
+
+                ComboBox {
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: 320
+
+                    model: ["af_heart", "af_bella", "am_adam"]
+
+                    currentIndex: Math.max(0, model.indexOf(vm.voice))
+
+                    onActivated: (index) => vm.voice = model[index]
+                }
+
+                Label {
+                    text: "Narration speed"
+                    color: Theme.textMuted
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: 320
+
+                    spacing: Theme.spacingSmall
+
+                    Slider {
+                        id: speedSlider
+
+                        Layout.fillWidth: true
+
+                        from: 0.5
+                        to: 2.0
+                        stepSize: 0.05
+
+                        value: vm.speed
+
+                        onMoved: vm.speed = value
+                    }
+
+                    Label {
+                        text: speedSlider.value.toFixed(2) + "×"
+
+                        color: Theme.text
+                        Layout.minimumWidth: 48
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+
+            color: Theme.surface
+            radius: Theme.radius
+
+            border.width: 1
+            border.color: Theme.border
+
+            implicitHeight: contentLayout.implicitHeight
+                            + Theme.spacingLarge * 2
+
+            ColumnLayout {
+                id: contentLayout
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.margins: Theme.spacingLarge
+
+                spacing: Theme.spacingSmall
+
+                Label {
+                    text: "What gets read"
+
+                    color: Theme.textMuted
+                    font.weight: Font.DemiBold
+                }
+
+                Switch {
+                    text: "Read footnotes"
+
+                    checked: vm.readFootnotes
+                    onToggled: vm.readFootnotes = checked
+                }
+
+                Switch {
+                    text: "Read figure captions"
+
+                    checked: vm.readCaptions
+                    onToggled: vm.readCaptions = checked
+                }
+
+                Switch {
+                    text: "Read sidebars"
+
+                    checked: vm.readSidebars
+                    onToggled: vm.readSidebars = checked
+                }
+
+                Label {
+                    text: "These apply the next time a book is opened."
+
+                    color: Theme.textFaint
+                    font.pixelSize: Theme.fontSizeSmall
+
+                    Layout.topMargin: Theme.spacingTight
+                }
+            }
+        }
+
+        Item {
+            Layout.fillHeight: true
+        }
+    }
+}

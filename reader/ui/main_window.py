@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QThread, QTimer, Slot
@@ -31,6 +32,16 @@ class MainWindow(QMainWindow):
 
         self.loader_thread = None
         self.loader_worker = None
+        self.pending_book_path = None
+
+        self.audio_future = None
+        self.audio_ready_action = None
+        self.audio_segment_index = None
+
+        self.returning_to_library = False
+        self.library_return_started = 0.0
+
+        self.choosing_document = False
 
         self.setWindowTitle("Book TTS Reader")
 
@@ -65,6 +76,7 @@ class MainWindow(QMainWindow):
     def _connect_events(self):
         self.library_page.open_document_requested.connect(self.open_document)
         self.library_page.book_requested.connect(self.open_book)
+        self.library_page.delete_book_requested.connect(self.delete_library_book)
 
         self.reader_page.library_requested.connect(self.show_library)
         self.reader_page.page_requested.connect(self.go_to_page)
@@ -108,6 +120,7 @@ class MainWindow(QMainWindow):
         self.back_shortcut.activated.connect(self._shortcut_skip_back)
 
         self.open_shortcut = QShortcut(QKeySequence("Ctrl+O"), self)
+        self.open_shortcut.setAutoRepeat(False)
         self.open_shortcut.activated.connect(self.open_document)
 
         self.page_shortcut = QShortcut(QKeySequence("Ctrl+L"), self)
@@ -161,8 +174,59 @@ class MainWindow(QMainWindow):
 
     def show_library(self):
         if self.controller is not None:
+            self.controller.running = False
+            self.controller.player.stop()
+
+            self.returning_to_library = True
+            self.library_return_started = time.monotonic()
+
+            self.loading_page.set_title("Returning to library...")
+            self.loading_page.set_status("Finishing background audio work...")
+            self.loading_page.set_progress(0)
+            self.pages.setCurrentWidget(self.loading_page)
+            return
+
+        self._display_library()
+
+    def _finish_show_library(self):
+        if self.controller is not None:
             self.controller.shutdown()
             self.controller = None
+
+        self._display_library()
+
+    def _poll_library_return(self) -> bool:
+        if not self.returning_to_library or self.controller is None:
+            return False
+
+        generating_indexes = [
+            index
+            for index, segment in enumerate(self.controller.segments)
+            if segment.id in self.controller.generating
+        ]
+
+        if generating_indexes:
+            progress = sum(
+                self.controller.get_generation_progress(index)
+                for index in generating_indexes
+            ) // len(generating_indexes)
+
+            self.loading_page.set_progress(progress)
+            return True
+
+        # Keep the transition visible briefly even when there is no pending
+        # generation, so returning to the library reads as a deliberate state.
+        if time.monotonic() - self.library_return_started < 0.35:
+            self.loading_page.set_progress(90)
+            return True
+
+        self.loading_page.set_progress(100)
+        self.returning_to_library = False
+        self._finish_show_library()
+
+        return True
+
+    def _display_library(self):
 
         self.reader_page.set_reader_enabled(False)
         self.reader_page.clear()
@@ -172,26 +236,72 @@ class MainWindow(QMainWindow):
         self.pages.setCurrentWidget(self.library_page)
 
     def open_document(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Open Book",
-            "",
-            (
-                "Supported Books (*.pdf *.epub);;"
-                "PDF Files (*.pdf);;"
-                "EPUB Files (*.epub)"
-            ),
-        )
+        if self.choosing_document:
+            # Holding the shortcut or a second activation while the picker is
+            # open would stack a second dialog behind the first.
+            return
+
+        self.choosing_document = True
+
+        try:
+            path = self._choose_document_path()
+        finally:
+            self.choosing_document = False
 
         if not path:
             return
 
         self.open_book(path)
 
+    def _choose_document_path(self) -> str:
+        """Ask for a book with the native platform file picker."""
+        dialog = QFileDialog(self, "Open Book")
+
+        dialog.setOption(QFileDialog.Option.DontUseNativeDialog, False)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
+
+        dialog.setNameFilters(
+            [
+                "Supported Books (*.pdf *.epub)",
+                "PDF Files (*.pdf)",
+                "EPUB Files (*.epub)",
+            ]
+        )
+
+        if not dialog.exec():
+            return ""
+
+        selected = dialog.selectedFiles()
+
+        return selected[0] if selected else ""
+
+    def delete_library_book(self, path: str, title: str):
+        answer = QMessageBox.question(
+            self,
+            "Remove book",
+            f'Remove "{title}" from your library?\n\n'
+            "The original book file will not be deleted.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        remove_book(path)
+        self.library_page.refresh()
+
     def open_book(self, path: str):
-        # A load already in flight owns the loading page; ignore the new request
-        # rather than leaving two workers racing for one controller slot.
+        # The worker thread can remain alive briefly after its result has been
+        # displayed. Preserve a selection made during that shutdown window so
+        # the user never has to choose the same file a second time.
         if self.loader_thread is not None and self.loader_thread.isRunning():
+            self.pending_book_path = path
+            self.loading_page.set_title("Opening book...")
+            self.loading_page.set_status("Finishing the previous book...")
+            self.loading_page.set_progress(0)
+            self.pages.setCurrentWidget(self.loading_page)
             return
 
         if not Path(path).exists():
@@ -212,6 +322,8 @@ class MainWindow(QMainWindow):
             self.controller = None
 
         self.loading_page.set_status("Preparing book...")
+        self.loading_page.set_title("Loading book...")
+        self.loading_page.set_progress(0)
 
         self.pages.setCurrentWidget(self.loading_page)
 
@@ -236,6 +348,7 @@ class MainWindow(QMainWindow):
         self.loader_thread.started.connect(self.loader_worker.run)
 
         self.loader_worker.status_changed.connect(self.loading_page.set_status)
+        self.loader_worker.progress_changed.connect(self.loading_page.set_progress)
 
         self.loader_worker.finished.connect(self._book_loaded)
 
@@ -253,6 +366,12 @@ class MainWindow(QMainWindow):
     def _loader_finished(self):
         self.loader_thread = None
         self.loader_worker = None
+
+        pending_path = self.pending_book_path
+        self.pending_book_path = None
+
+        if pending_path is not None:
+            QTimer.singleShot(0, lambda path=pending_path: self.open_book(path))
 
     @Slot(object)
     def _book_loaded(self, prepared_book):
@@ -272,6 +391,7 @@ class MainWindow(QMainWindow):
             return
 
         self.controller = controller
+        self.loading_page.set_progress(100)
 
         max_page = max(segment.page for segment in controller.segments)
 
@@ -307,8 +427,7 @@ class MainWindow(QMainWindow):
 
         chapter_index = self.controller.get_current_chapter_index()
 
-        if chapter_index is not None:
-            self.reader_page.set_current_chapter(chapter_index)
+        self.reader_page.set_current_chapter(chapter_index)
 
         self._update_play_state()
 
@@ -317,7 +436,11 @@ class MainWindow(QMainWindow):
             return
 
         if not self.controller.running:
-            self.controller.start()
+            self._run_when_audio_ready(
+                self.controller.get_current_index(),
+                self.controller.start,
+            )
+            return
         else:
             self.controller.toggle_pause()
 
@@ -334,17 +457,120 @@ class MainWindow(QMainWindow):
         if self.controller is None:
             return
 
-        self.controller.previous()
+        target_index = self.controller.get_current_index() - 1
 
-        self.update_reader()
+        if target_index < 0:
+            return
+
+        self._run_when_audio_ready(target_index, self.controller.previous)
 
     def next(self):
         if self.controller is None:
             return
 
-        self.controller.next()
+        target_index = self.controller.get_current_index() + 1
+
+        if target_index >= len(self.controller.segments):
+            return
+
+        self._run_when_audio_ready(target_index, self.controller.next)
+
+    def _run_when_audio_ready(self, segment_index: int, action):
+        if self.controller is None or self.audio_future is not None:
+            return
+
+        future = self.controller.prepare_segment_audio(segment_index)
+
+        if future is None:
+            action()
+            self.pages.setCurrentWidget(self.reader_page)
+            self.update_reader()
+            return
+
+        self.audio_future = future
+        self.audio_ready_action = action
+        self.audio_segment_index = segment_index
+
+        self.loading_page.set_title("Preparing audio...")
+        self.loading_page.set_status(
+            f"Generating segment {segment_index + 1} "
+            f"of {len(self.controller.segments)}..."
+        )
+        self.loading_page.set_progress(0)
+        self.pages.setCurrentWidget(self.loading_page)
+
+    def _poll_audio_generation(self) -> bool:
+        if self.audio_future is None:
+            return False
+
+        if not self.audio_future.done():
+            if self.controller is not None and self.audio_segment_index is not None:
+                self.loading_page.set_progress(
+                    self.controller.get_generation_progress(
+                        self.audio_segment_index
+                    )
+                )
+            return True
+
+        future = self.audio_future
+        action = self.audio_ready_action
+
+        self.audio_future = None
+        self.audio_ready_action = None
+        self.audio_segment_index = None
+        self.loading_page.set_progress(100)
+
+        try:
+            future.result()
+        except Exception as error:
+            if self.controller is not None:
+                self.controller.running = False
+
+            self.pages.setCurrentWidget(self.reader_page)
+            QMessageBox.critical(self, "Unable to generate audio", str(error))
+            self.update_reader()
+            return True
+
+        self.pages.setCurrentWidget(self.reader_page)
+
+        if action is not None:
+            action()
 
         self.update_reader()
+
+        return True
+
+    def _poll_pending_playback(self):
+        """Show generation progress while the controller waits for its audio.
+
+        `play_current` no longer blocks, so a cache miss surfaces here as a
+        progress screen rather than as a frozen window.
+        """
+        index = self.controller.get_current_index()
+
+        if self.pages.currentWidget() is not self.loading_page:
+            self.loading_page.set_title("Preparing audio...")
+            self.loading_page.set_status(
+                f"Generating segment {index + 1} "
+                f"of {len(self.controller.segments)}..."
+            )
+
+        self.loading_page.set_progress(
+            self.controller.get_generation_progress(index)
+        )
+
+        self.controller.tick()
+
+        if self.controller.awaiting_audio:
+            return
+
+        error = self.controller.take_generation_error()
+
+        self.pages.setCurrentWidget(self.reader_page)
+        self.update_reader()
+
+        if error is not None:
+            QMessageBox.critical(self, "Unable to generate audio", error)
 
     def skip_back(self):
         if self.controller is None:
@@ -395,7 +621,32 @@ class MainWindow(QMainWindow):
         if self.controller is None:
             return
 
+        if self._poll_library_return():
+            return
+
+        if self._poll_audio_generation():
+            return
+
+        if self.controller.awaiting_audio and self.controller.running:
+            self._poll_pending_playback()
+            return
+
         previous_index = self.controller.get_current_index()
+
+        player = self.controller.player
+
+        if (
+            self.controller.running
+            and not player.is_paused
+            and not player.is_playing()
+            and previous_index < len(self.controller.segments) - 1
+        ):
+            self._run_when_audio_ready(
+                previous_index + 1,
+                self.controller.tick,
+            )
+
+            return
 
         self.controller.tick()
 
