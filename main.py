@@ -11,7 +11,7 @@ if sys.stderr is None:
     sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 
@@ -44,6 +44,7 @@ def main():
 
     app.setOrganizationName("BookTTS")
     app.setApplicationName("BookTTSReader")
+    app.setWindowIcon(QIcon(str(resource_path("assets/app-icon.png"))))
 
     initialize_database()
 

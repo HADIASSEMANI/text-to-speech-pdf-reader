@@ -13,8 +13,9 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 UsedUserAreasWarning=no
-OutputDir=..\installer-output
+OutputDir=installer-output
 OutputBaseFilename=BookTTSReader-Setup-{#MyAppVersion}
+SourceDir=..
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -32,7 +33,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
 [Files]
-Source: "..\dist\BookTTSReader\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\BookTTSReader\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
