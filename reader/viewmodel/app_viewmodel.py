@@ -12,9 +12,11 @@ from PySide6.QtCore import (
 )
 
 from reader.book_loader_worker import BookLoaderWorker
+from reader.cache import enforce_cache_limit
 from reader.controller import ReaderController
 from reader.progress import remove_book
 from reader.settings import AppSettings
+from reader.text_source import save_pasted_text
 from reader.viewmodel.book_list_model import BookListModel
 
 
@@ -52,6 +54,7 @@ class AppViewModel(QObject):
         self._books.refresh()
 
         self.controller = None
+        self._shutdown_complete = False
 
         self.loader_thread = None
         self.loader_worker = None
@@ -228,6 +231,22 @@ class AppViewModel(QObject):
             self.settings.set_read_sidebars(value)
             self.settingsChanged.emit()
 
+    @Property(int, notify=settingsChanged)
+    def cacheLimitMb(self):
+        return self.settings.get_cache_limit_mb()
+
+    @cacheLimitMb.setter
+    def cacheLimitMb(self, value: int):
+        value = max(256, int(value))
+
+        if value != self.settings.get_cache_limit_mb():
+            self.settings.set_cache_limit_mb(value)
+
+            if self.controller is not None:
+                self.controller.cache_limit_mb = value
+
+            self.settingsChanged.emit()
+
     # ------------------------------------------------------------------
     # navigation between screens
     # ------------------------------------------------------------------
@@ -289,6 +308,16 @@ class AppViewModel(QObject):
     # ------------------------------------------------------------------
     # opening books
     # ------------------------------------------------------------------
+
+    @Slot(str, str)
+    def openPastedText(self, title: str, text: str):
+        try:
+            path = save_pasted_text(text, title)
+        except Exception as error:
+            self.errorRaised.emit("Unable to use pasted text", str(error))
+            return
+
+        self.openBook(path)
 
     @Slot(str)
     def openBook(self, path: str):
@@ -394,6 +423,7 @@ class AppViewModel(QObject):
                 start_index=prepared_book.start_index,
                 preload_count=2,
                 chapters=prepared_book.chapters,
+                cache_limit_mb=self.settings.get_cache_limit_mb(),
             )
         except Exception as error:
             self._book_load_failed(str(error))
@@ -882,6 +912,10 @@ class AppViewModel(QObject):
 
     @Slot()
     def shutdown(self):
+        if self._shutdown_complete:
+            return
+
+        self._shutdown_complete = True
         self.timer.stop()
 
         if self.loader_thread is not None and self.loader_thread.isRunning():
@@ -891,3 +925,7 @@ class AppViewModel(QObject):
         if self.controller is not None:
             self.controller.shutdown()
             self.controller = None
+        else:
+            enforce_cache_limit(
+                self.settings.get_cache_limit_mb() * 1024 * 1024
+            )

@@ -6,6 +6,7 @@ from reader.document_reader import (
     extract_chapters,
     extract_epub,
     extract_pdf,
+    extract_text,
     _check_supported,
 )
 from reader.layout_filter import (
@@ -103,10 +104,15 @@ def prepare_book(
 
         pages = build_narration_pages(classified_pages, settings)
 
-    else:
+    elif extension == ".epub":
         status("Extracting EPUB...")
 
         pages = extract_epub(pdf_path)
+
+    else:
+        status("Reading pasted text...")
+
+        pages = extract_text(pdf_path)
 
     status("Creating segments...")
 

@@ -15,6 +15,7 @@ from reader.progress import get_recent_books
 
 class LibraryPage(QWidget):
     open_document_requested = Signal()
+    paste_text_requested = Signal()
     book_requested = Signal(str)
     delete_book_requested = Signal(str, str)
 
@@ -34,10 +35,16 @@ class LibraryPage(QWidget):
 
         root.addWidget(header)
 
+        actions = QHBoxLayout()
+
+        self.paste_button = QPushButton("Paste Text")
+
         self.open_button = QPushButton("Open Book")
         self.open_button.setObjectName("primaryButton")
 
-        root.addWidget(self.open_button)
+        actions.addWidget(self.paste_button)
+        actions.addWidget(self.open_button)
+        root.addLayout(actions)
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -51,6 +58,7 @@ class LibraryPage(QWidget):
         root.addWidget(self.scroll, 1)
 
         self.open_button.clicked.connect(self.open_document_requested.emit)
+        self.paste_button.clicked.connect(self.paste_text_requested.emit)
 
     def refresh(self):
         while self.books_layout.count():
@@ -63,7 +71,9 @@ class LibraryPage(QWidget):
         books = get_recent_books()
 
         if not books:
-            empty = QLabel("No books yet. Open a book to begin.")
+            empty = QLabel(
+                "No books or texts yet. Open a book or paste text to begin."
+            )
             empty.setObjectName("secondaryText")
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -72,7 +82,11 @@ class LibraryPage(QWidget):
         for book in books:
             resume_segment = book.current_segment + 1
 
-            file_type = Path(book.path).suffix.lstrip(".").upper() or "FILE"
+            extension = Path(book.path).suffix.lower()
+            file_type = (
+                "TEXT" if extension == ".txt"
+                else extension.lstrip(".").upper() or "FILE"
+            )
 
             missing = not Path(book.path).exists()
 

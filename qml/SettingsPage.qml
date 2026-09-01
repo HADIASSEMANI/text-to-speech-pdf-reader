@@ -124,6 +124,37 @@ Item {
                         Layout.minimumWidth: 48
                     }
                 }
+
+                Label {
+                    text: "Audio cache limit"
+                    color: Theme.textMuted
+                }
+
+                SpinBox {
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: 320
+
+                    from: 256
+                    to: 8192
+                    stepSize: 256
+                    editable: true
+                    value: vm.cacheLimitMb
+
+                    textFromValue: function(value) {
+                        return value >= 1024
+                                ? (value / 1024).toFixed(value % 1024 ? 1 : 0) + " GB"
+                                : value + " MB"
+                    }
+
+                    valueFromText: function(text) {
+                        var amount = parseFloat(text)
+                        return text.toLowerCase().indexOf("gb") >= 0
+                                ? Math.round(amount * 1024)
+                                : Math.round(amount)
+                    }
+
+                    onValueModified: vm.cacheLimitMb = value
+                }
             }
         }
 

@@ -1,0 +1,12 @@
+# Desktop interface
+PySide6==6.11.2
+
+# PDF and EPUB extraction
+PyMuPDF==1.28.2
+
+# Text-to-speech and audio playback
+kokoro==0.9.4
+misaki[en]==0.9.4
+numpy==2.5.2
+pygame==2.6.1
+soundfile==0.14.0

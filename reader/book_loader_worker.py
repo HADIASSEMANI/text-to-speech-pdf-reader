@@ -35,6 +35,7 @@ class BookLoaderWorker(QObject):
                 "Reading saved progress...": 5,
                 "Extracting PDF...": 12,
                 "Extracting EPUB...": 12,
+                "Reading pasted text...": 12,
                 "Analyzing document layout...": 32,
                 "Preparing narration...": 48,
                 "Creating segments...": 62,

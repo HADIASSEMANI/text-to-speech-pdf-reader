@@ -10,6 +10,7 @@ Item {
     property bool shown: false
 
     signal openRequested()
+    signal pasteRequested()
 
     opacity: shown ? 1 : 0
     visible: opacity > 0
@@ -49,6 +50,11 @@ Item {
             Button {
                 text: "Settings"
                 onClicked: vm.showSettings()
+            }
+
+            Button {
+                text: "Paste Text"
+                onClicked: root.pasteRequested()
             }
 
             Button {
@@ -101,7 +107,7 @@ Item {
 
                 visible: view.count === 0
 
-                text: "No books yet. Open a book to begin."
+                text: "No books or texts yet. Open a book or paste text to begin."
 
                 color: Theme.textFaint
                 font.pixelSize: Theme.fontSizeReader

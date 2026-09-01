@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
+import QtQuick.Layouts
 
 import "."
 
@@ -37,6 +38,7 @@ ApplicationWindow {
             anchors.fill: parent
             shown: vm.page === "library"
             onOpenRequested: fileDialog.open()
+            onPasteRequested: pasteDialog.open()
         }
 
         LoadingPage {
@@ -65,12 +67,79 @@ ApplicationWindow {
         title: "Open Book"
 
         nameFilters: [
-            "Supported Books (*.pdf *.epub)",
+            "Supported Books and Text (*.pdf *.epub *.txt)",
             "PDF Files (*.pdf)",
-            "EPUB Files (*.epub)"
+            "EPUB Files (*.epub)",
+            "Text Files (*.txt)"
         ]
 
         onAccepted: vm.openBook(selectedFile)
+    }
+
+    Dialog {
+        id: pasteDialog
+
+        anchors.centerIn: parent
+        width: Math.min(720, window.width - 48)
+        height: Math.min(560, window.height - 48)
+
+        title: "Paste text to read"
+        modal: true
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        onOpened: {
+            standardButton(Dialog.Ok).enabled = Qt.binding(function() {
+                return pastedText.text.trim().length > 0
+            })
+            pastedText.forceActiveFocus()
+        }
+        onAccepted: {
+            vm.openPastedText(textTitle.text, pastedText.text)
+            textTitle.clear()
+            pastedText.clear()
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: Theme.spacingSmall
+
+            Label {
+                text: "Title (optional)"
+                color: Theme.textMuted
+            }
+
+            TextField {
+                id: textTitle
+                Layout.fillWidth: true
+                placeholderText: "Uses the first line when left blank"
+                maximumLength: 80
+            }
+
+            Label {
+                text: "Text"
+                color: Theme.textMuted
+            }
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+
+                TextArea {
+                    id: pastedText
+                    placeholderText: "Paste or type the text you want read aloud..."
+                    wrapMode: TextArea.Wrap
+                    selectByMouse: true
+                }
+            }
+
+            Label {
+                text: "The text will be saved in your library so you can resume later."
+                color: Theme.textFaint
+                wrapMode: Label.Wrap
+                Layout.fillWidth: true
+            }
+        }
     }
 
     Dialog {

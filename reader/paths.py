@@ -27,6 +27,15 @@ def cache_dir() -> Path:
     return path
 
 
+def pasted_text_dir() -> Path:
+    """App-managed source files created from the paste-text dialog."""
+    path = user_data_dir() / "pasted-texts"
+
+    path.mkdir(parents=True, exist_ok=True)
+
+    return path
+
+
 def database_path() -> Path:
     return user_data_dir() / "reader.db"
 

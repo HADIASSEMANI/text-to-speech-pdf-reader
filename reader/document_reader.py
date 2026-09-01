@@ -4,8 +4,9 @@ import pymupdf as fitz
 
 from reader.models import Chapter, TextBlock
 from reader.pdf_reader import extract_blocks
+from reader.text_source import extract_text
 
-SUPPORTED_EXTENSIONS = {".pdf", ".epub"}
+SUPPORTED_EXTENSIONS = {".pdf", ".epub", ".txt"}
 
 
 def extract_pdf(path: str) -> list[list[TextBlock]]:
@@ -38,6 +39,9 @@ def extract_chapters(path: str) -> list[Chapter]:
     """Read the document outline/TOC. Works for EPUB TOC and PDF bookmarks
     alike; returns an empty list when the document has neither.
     """
+    if Path(path).suffix.lower() == ".txt":
+        return []
+
     document = fitz.open(path)
 
     toc = document.get_toc()

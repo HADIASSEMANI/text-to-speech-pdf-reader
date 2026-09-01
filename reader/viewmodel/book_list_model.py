@@ -65,7 +65,11 @@ class BookListModel(QAbstractListModel):
             return f"Segment {book.current_segment + 1} · Continue"
 
         if role == self.FileTypeRole:
-            return Path(book.path).suffix.lstrip(".").upper() or "FILE"
+            extension = Path(book.path).suffix.lower()
+
+            return "TEXT" if extension == ".txt" else (
+                extension.lstrip(".").upper() or "FILE"
+            )
 
         if role == self.MissingRole:
             return missing

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from concurrent.futures import ThreadPoolExecutor
 from reader.audio_player import AudioPlayer
+from reader.cache import enforce_cache_limit, mark_cache_used
 from reader.models import Chapter, Segment
 from reader.tts import KokoroTTS
 from reader.progress import save_progress
@@ -47,12 +48,14 @@ class ReaderController:
         start_index: int = 0,
         preload_count: int = 2,
         chapters: list[Chapter] | None = None,
+        cache_limit_mb: int = 1024,
     ):
         self.segments = segments
         self.tts = tts
         self.book_id = book_id
         self.start_index = start_index
         self.chapters = chapters if chapters is not None else []
+        self.cache_limit_mb = cache_limit_mb
 
         self.player = AudioPlayer(
             segments,
@@ -101,6 +104,8 @@ class ReaderController:
         if Path(
             segment.audio_path
         ).exists():
+
+            mark_cache_used(segment.audio_path)
 
             segment.generated = True
 
@@ -268,6 +273,8 @@ class ReaderController:
 
         if not Path(segment.audio_path).exists():
             return False
+
+        mark_cache_used(segment.audio_path)
 
         segment.cues = self.tts.load_cues(segment.audio_path)
         segment.generated = True
@@ -551,6 +558,14 @@ class ReaderController:
 
     def shutdown(self):
 
+        current_index = self.player.current_index
+        protected_end = current_index + self.preload_count + 1
+        protected_paths = [
+            segment.audio_path
+            for segment in self.segments[current_index:protected_end]
+            if segment.audio_path
+        ]
+
         save_progress(
             book_id=self.book_id,
             segment_index=self.player.current_index,
@@ -567,3 +582,8 @@ class ReaderController:
         )
 
         self.player.shutdown()
+
+        enforce_cache_limit(
+            self.cache_limit_mb * 1024 * 1024,
+            protected_audio_paths=protected_paths,
+        )

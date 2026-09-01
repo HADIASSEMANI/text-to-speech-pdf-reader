@@ -7,13 +7,16 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QFileDialog,
     QMessageBox,
+    QInputDialog,
     QStackedWidget,
 )
 
 from reader.book_loader_worker import BookLoaderWorker
+from reader.cache import enforce_cache_limit
 from reader.controller import ReaderController
 from reader.progress import remove_book
 from reader.settings import AppSettings
+from reader.text_source import save_pasted_text
 
 from reader.ui.library_page import LibraryPage
 from reader.ui.loading_page import LoadingPage
@@ -75,6 +78,7 @@ class MainWindow(QMainWindow):
 
     def _connect_events(self):
         self.library_page.open_document_requested.connect(self.open_document)
+        self.library_page.paste_text_requested.connect(self.paste_text)
         self.library_page.book_requested.connect(self.open_book)
         self.library_page.delete_book_requested.connect(self.delete_library_book)
 
@@ -96,6 +100,9 @@ class MainWindow(QMainWindow):
 
         settings_page.voice_input.currentTextChanged.connect(self.settings.set_voice)
         settings_page.speed_input.valueChanged.connect(self.settings.set_speed)
+        settings_page.cache_limit_input.valueChanged.connect(
+            self._set_cache_limit
+        )
 
         settings_page.footnotes_input.toggled.connect(
             self.settings.set_read_footnotes
@@ -171,6 +178,12 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self.tick)
 
         self.timer.start(100)
+
+    def _set_cache_limit(self, size_mb: int):
+        self.settings.set_cache_limit_mb(size_mb)
+
+        if self.controller is not None:
+            self.controller.cache_limit_mb = size_mb
 
     def show_library(self):
         if self.controller is not None:
@@ -253,6 +266,33 @@ class MainWindow(QMainWindow):
 
         self.open_book(path)
 
+    def paste_text(self):
+        title, accepted = QInputDialog.getText(
+            self,
+            "Paste text to read",
+            "Title (optional):",
+        )
+
+        if not accepted:
+            return
+
+        text, accepted = QInputDialog.getMultiLineText(
+            self,
+            "Paste text to read",
+            "Text:",
+        )
+
+        if not accepted:
+            return
+
+        try:
+            path = save_pasted_text(text, title)
+        except Exception as error:
+            QMessageBox.warning(self, "Unable to use pasted text", str(error))
+            return
+
+        self.open_book(path)
+
     def _choose_document_path(self) -> str:
         """Ask for a book with the native platform file picker."""
         dialog = QFileDialog(self, "Open Book")
@@ -263,9 +303,10 @@ class MainWindow(QMainWindow):
 
         dialog.setNameFilters(
             [
-                "Supported Books (*.pdf *.epub)",
+                "Supported Books and Text (*.pdf *.epub *.txt)",
                 "PDF Files (*.pdf)",
                 "EPUB Files (*.epub)",
+                "Text Files (*.txt)",
             ]
         )
 
@@ -385,6 +426,7 @@ class MainWindow(QMainWindow):
                 start_index=prepared_book.start_index,
                 preload_count=2,
                 chapters=prepared_book.chapters,
+                cache_limit_mb=self.settings.get_cache_limit_mb(),
             )
         except Exception as error:
             self._book_load_failed(str(error))
@@ -685,5 +727,9 @@ class MainWindow(QMainWindow):
 
         if self.controller is not None:
             self.controller.shutdown()
+        else:
+            enforce_cache_limit(
+                self.settings.get_cache_limit_mb() * 1024 * 1024
+            )
 
         event.accept()

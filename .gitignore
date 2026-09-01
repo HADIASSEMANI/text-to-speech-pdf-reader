@@ -230,4 +230,5 @@ __marimo__/
 #cached files
 /cache/
 *.txt
+!requirements.txt
 /pdfs/

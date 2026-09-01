@@ -9,6 +9,7 @@ class AppSettings:
     # changes every cache id, because speed is part of the cache key.
     DEFAULT_VOICE = "af_heart"
     DEFAULT_SPEED = 0.85
+    DEFAULT_CACHE_LIMIT_MB = 1024
 
     def __init__(self):
         self.settings = QSettings(self.ORGANIZATION, self.APPLICATION)
@@ -32,6 +33,20 @@ class AppSettings:
 
     def set_speed(self, speed: float):
         self.settings.setValue("tts/speed", speed)
+
+    # -------------------------
+    # Generated audio cache
+    # -------------------------
+
+    def get_cache_limit_mb(self) -> int:
+        return self.settings.value(
+            "cache/max_size_mb",
+            self.DEFAULT_CACHE_LIMIT_MB,
+            type=int,
+        )
+
+    def set_cache_limit_mb(self, size_mb: int):
+        self.settings.setValue("cache/max_size_mb", max(256, int(size_mb)))
 
     # -------------------------
     # Narration content options
