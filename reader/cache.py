@@ -158,6 +158,66 @@ def enforce_cache_limit(
     )
 
 
+def clear_all_cache() -> CacheCleanupResult:
+    """Delete every generated WAV and cue file in the cache directory.
+
+    Used by development builds on application exit so a run never inherits
+    audio from an earlier one. Packaged builds keep their cache; see
+    ``is_frozen`` in ``reader.paths``. Call this only once playback has shut
+    down, or the player may still hold a file open.
+    """
+    removed_entries = 0
+    removed_bytes = 0
+    remaining_bytes = 0
+
+    try:
+        candidates = list(CACHE_DIR.iterdir())
+    except FileNotFoundError:
+        return CacheCleanupResult(0, 0, 0)
+    except OSError as error:
+        print(f"Could not inspect audio cache: {error}")
+        return CacheCleanupResult(0, 0, 0)
+
+    for path in candidates:
+        if not path.is_file() or path.suffix.lower() not in {".wav", ".json"}:
+            continue
+
+        try:
+            size = path.stat().st_size
+            path.unlink()
+        except FileNotFoundError:
+            continue
+        except OSError as error:
+            # A file still held open survives the purge rather than failing
+            # the shutdown. The next run reuses it, which is harmless.
+            print(f"Could not remove cache file {path}: {error}")
+
+            try:
+                remaining_bytes += path.stat().st_size
+            except OSError:
+                pass
+
+            continue
+
+        removed_bytes += size
+
+        if path.suffix.lower() == ".wav":
+            removed_entries += 1
+
+    if removed_entries or removed_bytes:
+        freed_mb = removed_bytes / (1024 * 1024)
+        print(
+            f"Development build: cleared {removed_entries} cached segment(s) "
+            f"and freed {freed_mb:.1f} MB."
+        )
+
+    return CacheCleanupResult(
+        removed_entries,
+        removed_bytes,
+        remaining_bytes,
+    )
+
+
 def clear_cache(segments, current_index: int) -> int:
     """Delete audio and cue files for segments already read.
 

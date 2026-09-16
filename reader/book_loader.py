@@ -15,7 +15,7 @@ from reader.layout_filter import (
     classify_blocks,
 )
 from reader.models import Chapter, Segment
-from reader.progress import get_or_create_book
+from reader.progress import get_or_create_book, resolve_resume_point
 from reader.segmenter import create_segments
 from reader.tts import KokoroTTS
 
@@ -27,6 +27,7 @@ class PreparedBook:
     tts: KokoroTTS
     book_id: int
     start_index: int
+    start_position: float = 0.0
     chapters: list[Chapter] = field(default_factory=list)
 
 
@@ -55,6 +56,7 @@ def load_book(
         tts=prepared.tts,
         book_id=prepared.book_id,
         start_index=prepared.start_index,
+        start_position=prepared.start_position,
         preload_count=2,
         chapters=prepared.chapters,
     )
@@ -135,7 +137,9 @@ def prepare_book(
             None,
         )
 
-    start_index = book.current_segment
+    # Resolved from the anchor rather than the stored index, so the saved
+    # place survives a change of voice, speed, or chunking.
+    start_index, start_position = resolve_resume_point(book, segments)
 
     if book.is_new:
         first_chapter_page = (
@@ -160,6 +164,7 @@ def prepare_book(
 
     if start_index >= len(segments):
         start_index = 0
+        start_position = 0.0
 
     status("Loading speech model...")
 
@@ -171,5 +176,6 @@ def prepare_book(
         tts=tts,
         book_id=book.id,
         start_index=start_index,
+        start_position=start_position,
         chapters=chapters,
     )

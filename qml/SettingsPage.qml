@@ -45,9 +45,30 @@ Item {
                 text: "Done"
                 highlighted: true
 
+                Accessible.name: "Close settings"
+
                 onClicked: vm.closeSettings()
             }
         }
+
+        /*
+           The settings did not scroll, so on a short window the lower
+           controls ran off the bottom with no way to reach them.
+        */
+        ScrollView {
+            id: settingsScroll
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
+            clip: true
+
+            contentWidth: availableWidth
+
+        ColumnLayout {
+            width: settingsScroll.availableWidth
+
+            spacing: Theme.spacingLarge
 
         Rectangle {
             Layout.fillWidth: true
@@ -89,6 +110,8 @@ Item {
 
                     currentIndex: Math.max(0, model.indexOf(vm.voice))
 
+                    Accessible.name: "Narration voice"
+
                     onActivated: (index) => vm.voice = model[index]
                 }
 
@@ -113,6 +136,8 @@ Item {
                         stepSize: 0.05
 
                         value: vm.speed
+
+                        Accessible.name: "Narration speed"
 
                         onMoved: vm.speed = value
                     }
@@ -153,7 +178,24 @@ Item {
                                 : Math.round(amount)
                     }
 
+                    Accessible.name: "Audio cache limit"
+
                     onValueModified: vm.cacheLimitMb = value
+                }
+
+                Label {
+                    text: "Voice and speed apply to the book you have open, "
+                          + "keeping your place. Audio for the new setting is "
+                          + "prepared as you reach it."
+
+                    color: Theme.textFaint
+                    font.pixelSize: Theme.fontSizeSmall
+
+                    wrapMode: Label.Wrap
+
+                    Layout.fillWidth: true
+                    Layout.columnSpan: root.narrow ? 1 : 2
+                    Layout.topMargin: Theme.spacingTight
                 }
             }
         }
@@ -219,8 +261,7 @@ Item {
             }
         }
 
-        Item {
-            Layout.fillHeight: true
+        }
         }
     }
 }

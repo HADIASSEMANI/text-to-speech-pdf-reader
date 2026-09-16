@@ -6,6 +6,15 @@ from pathlib import Path
 APP_NAME = "BookTTSReader"
 
 
+def is_frozen() -> bool:
+    """True when running from a packaged build (PyInstaller sets this).
+
+    False for ``python main.py``, which is how the development purge of the
+    audio cache tells the two apart.
+    """
+    return getattr(sys, "frozen", False)
+
+
 def user_data_dir() -> Path:
     """Writable per-user location. Keeps the database and cache out of the
     installation directory, which is read-only under Program Files.
@@ -44,7 +53,7 @@ def resource_path(relative: str) -> Path:
     """Locate a bundled read-only asset. PyInstaller unpacks these under
     ``sys._MEIPASS`` and sets ``sys.frozen``.
     """
-    if getattr(sys, "frozen", False):
+    if is_frozen():
         base = Path(sys._MEIPASS)
     else:
         base = Path(__file__).resolve().parent.parent

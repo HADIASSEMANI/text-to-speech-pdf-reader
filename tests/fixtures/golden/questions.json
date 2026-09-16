@@ -1,0 +1,44 @@
+{
+  "text": {
+    "passage": "questions",
+    "kind": "prose",
+    "guards": "Consecutive short questions. Kokoro's intonation depends on the question mark surviving cleanup, and each question should be its own cue for highlighting.",
+    "source_pages": 1,
+    "source_chars": 215,
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "text_is_faithful": true,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 264,
+        "text": "What does a reader actually want from a machine voice? Not perfection. Who would claim to want that?\n\nThe better question is narrower. Where does the voice lose you? Is it the pace, the flat cadence, or the way a paragraph ends without any sense that it has ended?"
+      }
+    ]
+  },
+  "pdf": {
+    "passage": "questions",
+    "source": "pdf",
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "block_counts": [
+      2
+    ],
+    "coverage": 1.0,
+    "text_is_faithful": true,
+    "unexpected_chars": 0,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 264,
+        "text": "What does a reader actually want from a machine voice? Not perfection. Who would claim to want that?\n\nThe better question is narrower. Where does the voice lose you? Is it the pace, the flat cadence, or the way a paragraph ends without any sense that it has ended?"
+      }
+    ]
+  }
+}

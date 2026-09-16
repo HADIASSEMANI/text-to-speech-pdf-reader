@@ -1,0 +1,44 @@
+{
+  "text": {
+    "passage": "dialogue",
+    "kind": "prose",
+    "guards": "Quoted speech, attribution tags, and a question inside a quote. Sentence splitting must not break on the period inside a quote, and the reader should not pause mid-exchange.",
+    "source_pages": 1,
+    "source_chars": 265,
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "text_is_faithful": true,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 329,
+        "text": "\"You are early,\" she said, setting the lamp down on the crate.\n\"The train was empty.\"\n\n\"It usually is.\" He pulled the door closed behind him. \"Did anyone see you come up the hill?\"\n\n\"No one is awake at this hour, Mr. Halloway. Not even the dogs.\"\n\nShe waited. He said nothing, so she asked again, more slowly: \"Did you bring it?\""
+      }
+    ]
+  },
+  "pdf": {
+    "passage": "dialogue",
+    "source": "pdf",
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "block_counts": [
+      4
+    ],
+    "coverage": 1.0,
+    "text_is_faithful": true,
+    "unexpected_chars": 0,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 329,
+        "text": "\"You are early,\" she said, setting the lamp down on the crate. \"The train was empty.\"\n\n\"It usually is.\" He pulled the door closed behind him. \"Did anyone see you come up the hill?\"\n\n\"No one is awake at this hour, Mr. Halloway. Not even the dogs.\"\n\nShe waited. He said nothing, so she asked again, more slowly: \"Did you bring it?\""
+      }
+    ]
+  }
+}

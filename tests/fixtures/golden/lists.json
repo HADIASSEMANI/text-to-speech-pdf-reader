@@ -1,0 +1,44 @@
+{
+  "text": {
+    "passage": "lists",
+    "kind": "structure",
+    "guards": "Numbered and bulleted items. Each item is a unit; running them together sounds like one long sentence, and merging them into the preceding paragraph loses the structure entirely.",
+    "source_pages": 1,
+    "source_chars": 342,
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "text_is_faithful": true,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 421,
+        "text": "The procedure has four steps.\n\n1. Record the ambient temperature before opening the case.\n2. Remove the drum and set it aside on a dry surface.\n3. Inspect the pen arm for play at the hinge.\n4. Reassemble, then wait a full hour before reading the trace.\n\nSkipping the final step is the most common error. Others include:\n\n- opening the case in direct sun\n- handling the drum without gloves\n- recording the time from memory"
+      }
+    ]
+  },
+  "pdf": {
+    "passage": "lists",
+    "source": "pdf",
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "block_counts": [
+      4
+    ],
+    "coverage": 1.0,
+    "text_is_faithful": true,
+    "unexpected_chars": 0,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 421,
+        "text": "The procedure has four steps.\n\n1. Record the ambient temperature before opening the case. 2. Remove the drum and set it aside on a dry surface. 3. Inspect the pen arm for play at the hinge. 4. Reassemble, then wait a full hour before reading the trace.\n\nSkipping the final step is the most common error. Others include:\n\n- opening the case in direct sun - handling the drum without gloves - recording the time from memory"
+      }
+    ]
+  }
+}

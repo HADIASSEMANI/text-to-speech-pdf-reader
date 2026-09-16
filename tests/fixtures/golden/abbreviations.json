@@ -1,0 +1,44 @@
+{
+  "text": {
+    "passage": "abbreviations",
+    "kind": "prose",
+    "guards": "Periods that do not end sentences (Dr., St., e.g., i.e., etc.), initials, and a decimal number. Naive sentence splitting fragments all of these.",
+    "source_pages": 1,
+    "source_chars": 293,
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "text_is_faithful": true,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 357,
+        "text": "Dr. A. M. Reyes arrived at St. Brendan's at 4.30 p.m. on a Tuesday, carrying no luggage. The porter, Mr. Ellis, had been told to expect someone from the U.S. — a researcher, i.e. not a patient.\n\nThe file listed three conditions (fever, tremor, insomnia, etc.) and one note: approx. 12.5 hours since onset. Vol. II of the register had gone missing years ago."
+      }
+    ]
+  },
+  "pdf": {
+    "passage": "abbreviations",
+    "source": "pdf",
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "block_counts": [
+      2
+    ],
+    "coverage": 1.0,
+    "text_is_faithful": false,
+    "unexpected_chars": 1,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 357,
+        "text": "Dr. A. M. Reyes arrived at St. Brendan's at 4.30 p.m. on a Tuesday, carrying no luggage. The porter, Mr. Ellis, had been told to expect someone from the U.S. ? a researcher, i.e. not a patient.\n\nThe file listed three conditions (fever, tremor, insomnia, etc.) and one note: approx. 12.5 hours since onset. Vol. II of the register had gone missing years ago."
+      }
+    ]
+  }
+}

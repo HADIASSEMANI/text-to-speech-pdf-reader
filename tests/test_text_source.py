@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from reader.progress import ProgressAnchor
 from reader.text_source import extract_text, save_pasted_text
 
 
@@ -49,7 +50,9 @@ class PastedTextSourceTests(unittest.TestCase):
             saved_book = SimpleNamespace(
                 id=42,
                 current_segment=0,
+                playback_position=0.0,
                 is_new=True,
+                anchor=ProgressAnchor(),
             )
 
             with (

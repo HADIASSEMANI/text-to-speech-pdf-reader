@@ -1,0 +1,56 @@
+{
+  "text": {
+    "passage": "long_sentence",
+    "kind": "prose",
+    "guards": "A single sentence long enough to exceed the old 1500-character chunk limit. The current chunker splits it at an arbitrary word; the replacement must split at a clause boundary or not at all.",
+    "source_pages": 1,
+    "source_chars": 1511,
+    "segment_count": 2,
+    "pages_covered": [
+      1
+    ],
+    "text_is_faithful": true,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 1493,
+        "text": "It began, as these things generally do, with a small administrative decision that nobody present understood to be important at the time, a decision recorded in the minutes as a single line without discussion or dissent, passed between departments over the following weeks in the ordinary way that paperwork moves through an institution that has long since stopped asking why any particular form exists, a decision recorded in the minutes as a single line without discussion or dissent, passed between departments over the following weeks in the ordinary way that paperwork moves through an institution that has long since stopped asking why any particular form exists, a decision recorded in the minutes as a single line without discussion or dissent, passed between departments over the following weeks in the ordinary way that paperwork moves through an institution that has long since stopped asking why any particular form exists, a decision recorded in the minutes as a single line without discussion or dissent, passed between departments over the following weeks in the ordinary way that paperwork moves through an institution that has long since stopped asking why any particular form exists, a decision recorded in the minutes as a single line without discussion or dissent, passed between departments over the following weeks in the ordinary way that paperwork moves through an institution that has long since stopped asking why any particular form exists, a decision recorded in the"
+      },
+      {
+        "index": 1,
+        "page": 1,
+        "chars": 302,
+        "text": "minutes as a single line without discussion or dissent, passed between departments over the following weeks in the ordinary way that paperwork moves through an institution that has long since stopped asking why any particular form exists, and by the following spring nobody could say who had signed it."
+      }
+    ]
+  },
+  "pdf": {
+    "passage": "long_sentence",
+    "source": "pdf",
+    "segment_count": 2,
+    "pages_covered": [
+      1
+    ],
+    "block_counts": [
+      1
+    ],
+    "coverage": 1.0,
+    "text_is_faithful": true,
+    "unexpected_chars": 0,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 1493,
+        "text": "It began, as these things generally do, with a small administrative decision that nobody present understood to be important at the time, a decision recorded in the minutes as a single line without discussion or dissent, passed between departments over the following weeks in the ordinary way that paperwork moves through an institution that has long since stopped asking why any particular form exists, a decision recorded in the minutes as a single line without discussion or dissent, passed between departments over the following weeks in the ordinary way that paperwork moves through an institution that has long since stopped asking why any particular form exists, a decision recorded in the minutes as a single line without discussion or dissent, passed between departments over the following weeks in the ordinary way that paperwork moves through an institution that has long since stopped asking why any particular form exists, a decision recorded in the minutes as a single line without discussion or dissent, passed between departments over the following weeks in the ordinary way that paperwork moves through an institution that has long since stopped asking why any particular form exists, a decision recorded in the minutes as a single line without discussion or dissent, passed between departments over the following weeks in the ordinary way that paperwork moves through an institution that has long since stopped asking why any particular form exists, a decision recorded in the"
+      },
+      {
+        "index": 1,
+        "page": 1,
+        "chars": 302,
+        "text": "minutes as a single line without discussion or dissent, passed between departments over the following weeks in the ordinary way that paperwork moves through an institution that has long since stopped asking why any particular form exists, and by the following spring nobody could say who had signed it."
+      }
+    ]
+  }
+}

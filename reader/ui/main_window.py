@@ -187,8 +187,7 @@ class MainWindow(QMainWindow):
 
     def show_library(self):
         if self.controller is not None:
-            self.controller.running = False
-            self.controller.player.stop()
+            self.controller.stop()
 
             self.returning_to_library = True
             self.library_return_started = time.monotonic()
@@ -566,7 +565,7 @@ class MainWindow(QMainWindow):
             future.result()
         except Exception as error:
             if self.controller is not None:
-                self.controller.running = False
+                self.controller.stop()
 
             self.pages.setCurrentWidget(self.reader_page)
             QMessageBox.critical(self, "Unable to generate audio", str(error))

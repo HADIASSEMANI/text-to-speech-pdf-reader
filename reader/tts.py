@@ -137,10 +137,17 @@ class KokoroTTS:
                 audio_parts
             )
 
-        sf.write(
+        # Write through a temporary name and rename into place. Synthesis
+        # can outlive the book it was started for, and a process that exits
+        # mid-write would otherwise leave a truncated WAV in the cache that
+        # every later read of that passage would fail on.
+        self._write_atomically(
             output,
-            final_audio,
-            self.SAMPLE_RATE
+            lambda target: sf.write(
+                target,
+                final_audio,
+                self.SAMPLE_RATE,
+            ),
         )
 
         self._save_cues(
@@ -164,6 +171,24 @@ class KokoroTTS:
             CACHE_DIR.iterdir()
         )
 
+    @staticmethod
+    def _write_atomically(target: Path, write):
+        # The extension has to survive: soundfile picks its format from it,
+        # so a plain ".part" suffix makes every write fail.
+        temporary = target.with_name(
+            f"{target.stem}.part{target.suffix}"
+        )
+
+        try:
+            write(temporary)
+
+            os.replace(temporary, target)
+
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+
+            raise
+
     def _save_cues(
         self,
         output: Path,
@@ -182,12 +207,15 @@ class KokoroTTS:
             for cue in cues
         ]
 
-        cue_path.write_text(
-            json.dumps(
-                data,
-                indent=2
+        self._write_atomically(
+            cue_path,
+            lambda target: target.write_text(
+                json.dumps(
+                    data,
+                    indent=2
+                ),
+                encoding="utf-8"
             ),
-            encoding="utf-8"
         )
 
     def load_cues(

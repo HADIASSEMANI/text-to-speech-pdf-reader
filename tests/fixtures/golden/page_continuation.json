@@ -1,0 +1,45 @@
+{
+  "text": {
+    "passage": "page_continuation",
+    "kind": "structure",
+    "guards": "A sentence that runs across a page break, and a short final fragment on the second page. Today the join becomes a paragraph break mid-sentence, and the fragment loses its own page number.",
+    "source_pages": 2,
+    "source_chars": 277,
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "text_is_faithful": true,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 340,
+        "text": "The path climbed for another mile before it turned, and where it turned the trees thinned enough that you could see the valley floor, which at that hour was still holding the last of the mist, so she stopped walking and stood there until the wind moved through the\n\nbranches and the whole view shifted at once.\n\nShe kept walking after that."
+      }
+    ]
+  },
+  "pdf": {
+    "passage": "page_continuation",
+    "source": "pdf",
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "block_counts": [
+      1,
+      2
+    ],
+    "coverage": 1.0,
+    "text_is_faithful": true,
+    "unexpected_chars": 0,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 340,
+        "text": "The path climbed for another mile before it turned, and where it turned the trees thinned enough that you could see the valley floor, which at that hour was still holding the last of the mist, so she stopped walking and stood there until the wind moved through the\n\nbranches and the whole view shifted at once.\n\nShe kept walking after that."
+      }
+    ]
+  }
+}

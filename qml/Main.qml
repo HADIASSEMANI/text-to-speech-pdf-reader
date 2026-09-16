@@ -51,6 +51,8 @@ ApplicationWindow {
 
             anchors.fill: parent
             shown: vm.page === "reader"
+
+            onShortcutsRequested: shortcutsDialog.open()
         }
 
         SettingsPage {
@@ -182,6 +184,62 @@ ApplicationWindow {
         }
     }
 
+    /*
+       Shortcuts are only useful if they can be found. This is what F1 and
+       the "?" key open, and what the reader's keyboard hint points at.
+    */
+    Dialog {
+        id: shortcutsDialog
+
+        anchors.centerIn: parent
+
+        title: "Keyboard shortcuts"
+
+        modal: true
+        standardButtons: Dialog.Ok
+
+        ColumnLayout {
+            spacing: Theme.spacingTight
+
+            Repeater {
+                model: [
+                    { keys: "Space", action: "Play or pause" },
+                    { keys: "\u2190 / \u2192", action: "Previous or next passage" },
+                    { keys: "Shift \u2190 / \u2192", action: "Skip 15 seconds" },
+                    { keys: "Ctrl L", action: "Go to page" },
+                    { keys: "Ctrl O", action: "Open a book" },
+                    { keys: "Esc", action: "Back to the library" },
+                    { keys: "F1 or ?", action: "Show this list" }
+                ]
+
+                delegate: RowLayout {
+                    required property var modelData
+
+                    Layout.fillWidth: true
+
+                    spacing: Theme.spacingLarge
+
+                    Label {
+                        text: modelData.keys
+
+                        color: Theme.text
+                        font.family: "monospace"
+
+                        Layout.minimumWidth: 120
+                    }
+
+                    Label {
+                        text: modelData.action
+
+                        color: Theme.textMuted
+
+                        Layout.fillWidth: true
+                    }
+                }
+            }
+        }
+    }
+
     Connections {
         target: vm
 
@@ -238,5 +296,22 @@ ApplicationWindow {
         sequence: "Ctrl+L"
         enabled: vm.page === "reader"
         onActivated: readerPage.focusPageField()
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: vm.page === "reader"
+        onActivated: vm.showLibrary()
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: vm.page === "settings"
+        onActivated: vm.closeSettings()
+    }
+
+    Shortcut {
+        sequences: ["F1", "?"]
+        onActivated: shortcutsDialog.open()
     }
 }

@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from reader.cache import enforce_cache_limit, mark_cache_used
+from reader.cache import clear_all_cache, enforce_cache_limit, mark_cache_used
 
 
 class CacheCleanupTests(unittest.TestCase):
@@ -63,6 +63,37 @@ class CacheCleanupTests(unittest.TestCase):
 
             self.assertTrue(audio.exists())
             self.assertFalse(audio.with_suffix(".json").exists())
+
+
+class ClearAllCacheTests(unittest.TestCase):
+    def test_removes_every_generated_file_and_leaves_others(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            audio = cache / "abc.wav"
+            cues = cache / "abc.json"
+            unrelated = cache / "notes.txt"
+            audio.write_bytes(b"a" * 10)
+            cues.write_bytes(b"c" * 2)
+            unrelated.write_bytes(b"keep")
+
+            with patch("reader.cache.CACHE_DIR", cache):
+                result = clear_all_cache()
+
+            self.assertFalse(audio.exists())
+            self.assertFalse(cues.exists())
+            self.assertTrue(unrelated.exists())
+            self.assertEqual(result.removed_entries, 1)
+            self.assertEqual(result.removed_bytes, 12)
+
+    def test_missing_cache_directory_is_not_an_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "gone"
+
+            with patch("reader.cache.CACHE_DIR", missing):
+                result = clear_all_cache()
+
+            self.assertEqual(result.removed_entries, 0)
+            self.assertEqual(result.removed_bytes, 0)
 
 
 if __name__ == "__main__":

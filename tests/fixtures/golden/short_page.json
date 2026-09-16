@@ -1,0 +1,46 @@
+{
+  "text": {
+    "passage": "short_page",
+    "kind": "structure",
+    "guards": "A page holding a single short paragraph. It is merged into the previous page's segment today, which silently moves its page number and breaks page navigation.",
+    "source_pages": 3,
+    "source_chars": 204,
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "text_is_faithful": true,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 252,
+        "text": "The register was kept in a locked drawer beneath the counter, and only two people had ever been given a key to it, which is the detail that matters most in everything that follows.\n\nNeither of them is still alive.\n\nThe drawer was opened again in March."
+      }
+    ]
+  },
+  "pdf": {
+    "passage": "short_page",
+    "source": "pdf",
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "block_counts": [
+      1,
+      1,
+      1
+    ],
+    "coverage": 1.0,
+    "text_is_faithful": true,
+    "unexpected_chars": 0,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 252,
+        "text": "The register was kept in a locked drawer beneath the counter, and only two people had ever been given a key to it, which is the detail that matters most in everything that follows.\n\nNeither of them is still alive.\n\nThe drawer was opened again in March."
+      }
+    ]
+  }
+}

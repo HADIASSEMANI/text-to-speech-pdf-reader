@@ -61,6 +61,10 @@ Rectangle {
             }
 
             RowLayout {
+                // Without this the badge and the subtitle size to their own
+                // content and run past the card on a narrow window.
+                Layout.fillWidth: true
+
                 spacing: Theme.spacingTight
 
                 Rectangle {

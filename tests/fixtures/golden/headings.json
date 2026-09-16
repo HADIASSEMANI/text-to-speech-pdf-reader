@@ -1,0 +1,44 @@
+{
+  "text": {
+    "passage": "headings",
+    "kind": "structure",
+    "guards": "A heading followed immediately by body text. The heading must not be glued onto the sentence after it, and the boundary after a heading is one of the few that genuinely deserves a pause.",
+    "source_pages": 1,
+    "source_chars": 215,
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "text_is_faithful": true,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 259,
+        "text": "Chapter Four\n\nThe Weather Station\n\nFor eleven years the station reported nothing of interest. Its instruments were checked each spring, replaced each decade, and otherwise left alone.\n\nA Note on the Records\n\nThe logs survive in two forms. Neither is complete."
+      }
+    ]
+  },
+  "pdf": {
+    "passage": "headings",
+    "source": "pdf",
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "block_counts": [
+      5
+    ],
+    "coverage": 1.0,
+    "text_is_faithful": true,
+    "unexpected_chars": 0,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 259,
+        "text": "Chapter Four\n\nThe Weather Station\n\nFor eleven years the station reported nothing of interest. Its instruments were checked each spring, replaced each decade, and otherwise left alone.\n\nA Note on the Records\n\nThe logs survive in two forms. Neither is complete."
+      }
+    ]
+  }
+}

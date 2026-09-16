@@ -31,9 +31,18 @@ Item {
 
         spacing: Theme.spacingLarge
 
-        RowLayout {
+        /*
+           On a narrow window the title and three buttons cannot share a row
+           without the title being squeezed to nothing, so the actions drop
+           to their own line instead of clipping.
+        */
+        GridLayout {
             Layout.fillWidth: true
-            spacing: Theme.spacingSmall
+
+            columns: root.narrow ? 1 : 2
+
+            columnSpacing: Theme.spacingSmall
+            rowSpacing: Theme.spacingSmall
 
             Label {
                 text: "Your Library"
@@ -47,21 +56,38 @@ Item {
                 elide: Label.ElideRight
             }
 
-            Button {
-                text: "Settings"
-                onClicked: vm.showSettings()
-            }
+            Flow {
+                Layout.fillWidth: root.narrow
+                Layout.alignment: root.narrow
+                                  ? Qt.AlignLeft
+                                  : Qt.AlignRight | Qt.AlignVCenter
 
-            Button {
-                text: "Paste Text"
-                onClicked: root.pasteRequested()
-            }
+                spacing: Theme.spacingSmall
 
-            Button {
-                text: "Open Book"
-                highlighted: true
+                Button {
+                    text: "Settings"
 
-                onClicked: root.openRequested()
+                    Accessible.name: "Settings"
+
+                    onClicked: vm.showSettings()
+                }
+
+                Button {
+                    text: "Paste Text"
+
+                    Accessible.name: "Read pasted text"
+
+                    onClicked: root.pasteRequested()
+                }
+
+                Button {
+                    text: "Open Book"
+                    highlighted: true
+
+                    Accessible.name: "Open a book"
+
+                    onClicked: root.openRequested()
+                }
             }
         }
 
