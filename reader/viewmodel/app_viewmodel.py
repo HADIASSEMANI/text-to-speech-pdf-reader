@@ -85,6 +85,7 @@ class AppViewModel(QObject):
         self._book_title = "No book"
         self._status_text = "Page --"
         self._segment_text = ""
+        self._segment_html = ""
         self._current_page = 1
         self._max_page = 1
 
@@ -162,6 +163,15 @@ class AppViewModel(QObject):
     @Property(str, notify=segmentChanged)
     def segmentText(self):
         return self._segment_text
+
+    @Property(str, notify=segmentChanged)
+    def segmentHtml(self):
+        """The passage with its structure: headings, paragraphs, notation.
+
+        Carries exactly the characters of `segmentText`, so the character
+        ranges used for highlighting and click-to-read still line up.
+        """
+        return self._segment_html
 
     @Property(int, notify=segmentChanged)
     def currentPage(self):
@@ -365,6 +375,7 @@ class AppViewModel(QObject):
         self._assign("_book_title", "No book")
         self._assign("_status_text", "Page --")
         self._assign("_segment_text", "")
+        self._assign("_segment_html", "")
 
         self._cue_source = None
         self._set_cue_offsets([])
@@ -681,6 +692,11 @@ class AppViewModel(QObject):
         changed = self._assign("_segment_text", segment.text)
 
         changed |= self._assign(
+            "_segment_html",
+            getattr(segment, "html", ""),
+        )
+
+        changed |= self._assign(
             "_status_text",
             f"Page {segment.page}  ·  Segment {index + 1} / {total}",
         )
@@ -688,6 +704,10 @@ class AppViewModel(QObject):
         changed |= self._assign("_current_page", segment.page)
 
         if changed:
+            # Two passages can begin with equal-length cues. Clearing the
+            # old bounds ensures the new cue emits a change after deselection.
+            self._highlight_start = self._highlight_end = 0
+            self.highlightChanged.emit()
             self.segmentChanged.emit()
 
         self._refresh_cue_offsets(force=changed)
@@ -708,33 +728,9 @@ class AppViewModel(QObject):
         The text is never rebuilt from cues: doing that collapses the
         paragraph spacing the reader adds for legibility.
         """
-        if not segment.cues:
-            return []
+        from reader.cue_mapping import map_cues
 
-        offsets = []
-
-        text = segment.text
-        search_position = 0
-
-        for cue in segment.cues:
-            cue_text = cue.text.strip()
-
-            if not cue_text:
-                continue
-
-            start = text.find(cue_text, search_position)
-
-            # A cue that cannot be mapped is skipped rather than changing the
-            # displayed text and losing its original newlines.
-            if start == -1:
-                continue
-
-            end = start + len(cue_text)
-
-            offsets.append((cue, start, end))
-            search_position = end
-
-        return offsets
+        return map_cues(segment)
 
     def _refresh_cue_offsets(self, force: bool = False):
         """Map cues onto the displayed text whenever the cues change.

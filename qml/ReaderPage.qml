@@ -70,6 +70,7 @@ Item {
         }
 
         function onSegmentChanged() {
+            body.loadSegment()
             body.deselect()
             scroll.contentItem.contentY = 0
         }
@@ -264,8 +265,24 @@ Item {
 
                 TextArea {
                     id: body
+                    objectName: "readerBody"
 
-                    text: vm.segmentText
+                    /*
+                       Rich text, so a heading reads as a heading and a
+                       superscript is a superscript. The markup carries the
+                       same characters as `segmentText`, which is what keeps
+                       the narration highlight and click-to-read lined up.
+                    */
+                    function loadSegment() {
+                        // Set format BEFORE content. Independent bindings
+                        // can reinterpret a new plain passage as HTML while
+                        // switching from an EPUB, losing tags and line breaks.
+                        textFormat = vm.segmentHtml ? TextArea.RichText : TextArea.PlainText
+                        text = vm.segmentHtml || vm.segmentText
+                        Qt.callLater(root.showHighlight)
+                    }
+
+                    Component.onCompleted: loadSegment()
 
                     readOnly: true
                     wrapMode: TextArea.Wrap
@@ -295,8 +312,7 @@ Item {
 
                     // Caps the line length on a wide window and centres the
                     // column, instead of running prose the full 1100px.
-                    leftPadding: Math.max(Theme.spacingLarge,
-                                          (scroll.width - 760) / 2)
+                    leftPadding: Math.max(28, (scroll.width - 760) / 2)
                     rightPadding: leftPadding
 
                     background: null

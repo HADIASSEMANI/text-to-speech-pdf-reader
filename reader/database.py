@@ -55,6 +55,14 @@ MIGRATIONS: list[list[str]] = [
         "ALTER TABLE books ADD COLUMN anchor_page INTEGER",
         "ALTER TABLE books ADD COLUMN anchor_text TEXT",
     ],
+    # 3 - source anchors
+    #
+    # Structured extraction gives every block a stable identifier from the
+    # document it came from. That outlives any change to chunking, so it is
+    # the most durable thing a saved position can point at.
+    [
+        "ALTER TABLE books ADD COLUMN anchor_source_id TEXT",
+    ],
 ]
 
 

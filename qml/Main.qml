@@ -35,6 +35,8 @@ ApplicationWindow {
         anchors.fill: parent
 
         LibraryPage {
+            id: libraryPage
+
             anchors.fill: parent
             shown: vm.page === "library"
             onOpenRequested: fileDialog.open()
@@ -161,27 +163,14 @@ ApplicationWindow {
         }
     }
 
-    Dialog {
+    RemoveBookDialog {
         id: deleteDialog
 
-        property string path: ""
-        property string bookTitle: ""
+        returnFocusTo: libraryPage.primaryAction
 
-        anchors.centerIn: parent
-
-        title: "Remove book"
-
-        modal: true
-        standardButtons: Dialog.Yes | Dialog.No
-
+        // One handler, so the removal runs exactly once however the dialog
+        // was accepted.
         onAccepted: vm.deleteBook(path)
-
-        Label {
-            text: "Remove \"" + deleteDialog.bookTitle + "\" from your library?\n\n"
-                  + "The original book file will not be deleted."
-            wrapMode: Label.Wrap
-            width: Math.min(implicitWidth, window.width - 120)
-        }
     }
 
     /*

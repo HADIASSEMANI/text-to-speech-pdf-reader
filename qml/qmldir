@@ -6,5 +6,6 @@ ReaderPage 1.0 ReaderPage.qml
 SettingsPage 1.0 SettingsPage.qml
 
 BookCard 1.0 BookCard.qml
+RemoveBookDialog 1.0 RemoveBookDialog.qml
 PlayerControls 1.0 PlayerControls.qml
 RainbowSpinner 1.0 RainbowSpinner.qml

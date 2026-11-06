@@ -19,15 +19,22 @@ class ProgressAnchor:
     page: int | None = None
     text: str | None = None
 
+    # Identifier of the first source block in the passage, when the format
+    # provides one. EPUB does; a rendered PDF does not.
+    source_id: str | None = None
+
     # Enough of the passage to identify it again, short enough to store.
     EXCERPT_CHARS = 160
 
     @classmethod
     def from_segment(cls, segment) -> "ProgressAnchor":
+        source_ids = getattr(segment, "source_ids", None) or []
+
         return cls(
             cache_id=segment.cache_id,
             page=segment.page,
             text=" ".join(segment.text.split())[: cls.EXCERPT_CHARS],
+            source_id=source_ids[0] if source_ids else None,
         )
 
 
@@ -161,6 +168,9 @@ def _read_anchor(row) -> ProgressAnchor:
         cache_id=row["anchor_cache_id"] if "anchor_cache_id" in keys else None,
         page=row["anchor_page"] if "anchor_page" in keys else None,
         text=row["anchor_text"] if "anchor_text" in keys else None,
+        source_id=(
+            row["anchor_source_id"] if "anchor_source_id" in keys else None
+        ),
     )
 
 
@@ -210,6 +220,7 @@ def save_progress(
                     anchor_cache_id = ?,
                     anchor_page = ?,
                     anchor_text = ?,
+                    anchor_source_id = ?,
                     last_opened = CURRENT_TIMESTAMP
 
                 WHERE id = ?
@@ -220,6 +231,7 @@ def save_progress(
                     anchor.cache_id,
                     anchor.page,
                     anchor.text,
+                    anchor.source_id,
                     book_id
                 )
             )
@@ -237,11 +249,13 @@ def resolve_resume_point(
 
     1. A segment with the same cache id is the same text at the same voice
        and speed, so its saved second offset is still valid.
-    2. Matching the recorded excerpt finds the passage after the book has
+    2. A source identifier points at the block in the document it came from,
+       which no change to chunking can move.
+    3. Matching the recorded excerpt finds the passage after the book has
        been resegmented or the narration settings changed. The offset within
        it no longer means anything, so reading restarts at the passage.
-    3. The recorded page is a coarser version of the same idea.
-    4. The stored index is the last resort, and only when it is in range.
+    4. The recorded page is a coarser version of the same idea.
+    5. The stored index is the last resort, and only when it is in range.
     """
     if not segments:
         return 0, 0.0
@@ -252,6 +266,13 @@ def resolve_resume_point(
         for index, segment in enumerate(segments):
             if segment.cache_id == anchor.cache_id:
                 return index, max(0.0, progress.playback_position)
+
+    # A source identifier survives re-extraction and re-chunking, so it is
+    # tried before matching on the text itself.
+    if anchor.source_id:
+        for index, segment in enumerate(segments):
+            if anchor.source_id in getattr(segment, "source_ids", ()):
+                return index, 0.0
 
     if anchor.text:
         excerpt = " ".join(anchor.text.split())

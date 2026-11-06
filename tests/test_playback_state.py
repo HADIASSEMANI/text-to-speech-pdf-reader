@@ -732,5 +732,27 @@ class NarrationSettingsTests(ControllerTestCase):
         self.assertFalse(controller.running)
 
 
+class SpokenTextTests(ControllerTestCase):
+    def test_generation_uses_spoken_text(self):
+        from unittest.mock import Mock
+        controller = self.make_controller()
+        segment = self.segments[0]
+        Path(segment.audio_path).unlink()
+        segment.spoken_text = 'n is greater than or equal to zero.'
+        controller.tts.generate = Mock(return_value=[])
+        controller.ensure_audio(segment)
+        self.assertEqual(segment.spoken_text, controller.tts.generate.call_args.args[0])
+        controller.shutdown()
+
+    def test_voice_change_rekeys_using_spoken_text(self):
+        from reader.cache import create_cache_id
+        controller = self.make_controller()
+        segment = self.segments[0]
+        segment.spoken_text = 'n is greater than or equal to zero.'
+        controller.apply_narration_settings('af_bella', 1.0)
+        self.assertEqual(create_cache_id(segment.spoken_text, 'af_bella', 1.0), segment.cache_id)
+        controller.shutdown()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -204,7 +204,7 @@ class ReaderController:
 
         segment.cues = (
             self.tts.generate(
-                segment.text,
+                segment.spoken_text,
                 segment.audio_path,
                 on_progress=lambda value: self.generation_progress.__setitem__(
                     segment.id,
@@ -813,7 +813,7 @@ class ReaderController:
 
         for segment in self.segments:
             segment.cache_id = create_cache_id(
-                text=segment.text,
+                text=segment.spoken_text,
                 voice=voice,
                 speed=speed,
             )

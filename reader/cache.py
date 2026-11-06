@@ -14,9 +14,31 @@ class CacheCleanupResult:
     remaining_bytes: int
 
 
-def create_cache_id(text: str, voice: str, speed: float = 1.0) -> str:
+# Bumped whenever the text handed to the speech model can change for the
+# same book: new extraction, new pronunciation rules, new pause handling.
+# Old entries are not deleted; they simply stop being asked for, and the
+# usual size cleanup retires them.
+#
+#   1 - flat PyMuPDF text
+#   2 - structured extraction: headings, one production per line, real
+#       superscripts, equations as their own blocks
+#   3 - single-pass EPUB flow, canonical whitespace, spoken-text synthesis
+NARRATION_VERSION = 3
 
-    content = f"{voice}:{speed}:{text}"
+
+def create_cache_id(
+    text: str,
+    voice: str,
+    speed: float = 1.0,
+    version: int = NARRATION_VERSION,
+) -> str:
+    """Identify generated audio by everything that determines how it sounds.
+
+    ``text`` is the *spoken* text, not the displayed text: once an equation
+    is shown as notation and read as a sentence, the notation is no longer
+    what the audio contains.
+    """
+    content = f"v{version}:{voice}:{speed}:{text}"
 
     return hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
 

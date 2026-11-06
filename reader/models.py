@@ -53,6 +53,30 @@ class Segment:
 
     cues: list[TextCue] = field(default_factory=list)
 
+    # Markup for `text`, carrying exactly the same characters. The reader
+    # highlights by selecting a character range, so the two must not drift.
+    html: str = ""
+
+    # What is spoken. Differs from `text` wherever notation is displayed and
+    # a sentence is read: the equation on screen stays an equation.
+    spoken_text: str = ""
+
+    # Source identifiers of the blocks this segment was built from. These are
+    # what a saved position is anchored to, because they survive a change to
+    # how the book is chunked.
+    source_ids: list[str] = field(default_factory=list)
+
+    # The page as the book itself labels it, which for an EPUB comes from its
+    # own pagebreak anchors rather than from a rendered layout.
+    page_label: str | None = None
+
+    # (spoken start/end, display start/end), in Python character offsets.
+    speech_spans: list[tuple[int, int, int, int]] = field(default_factory=list)
+
+    def __post_init__(self):
+        if not self.spoken_text:
+            self.spoken_text = self.text
+
 
 @dataclass
 class Chapter:
@@ -60,3 +84,8 @@ class Chapter:
     title: str
     page: int
     segment_index: int | None = None
+
+    # For EPUB, the content document (and optional fragment) the entry
+    # points at. Chapter positions are resolved through this rather than
+    # through a page number the renderer invented.
+    target: str | None = None

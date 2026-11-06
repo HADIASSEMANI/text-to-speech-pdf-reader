@@ -25,6 +25,9 @@ Item {
 
     readonly property bool narrow: width < Theme.narrowWidth
 
+    // Where focus should land after a dialog closes.
+    property alias primaryAction: openButton
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: root.narrow ? Theme.spacing : Theme.pageMargin
@@ -81,6 +84,8 @@ Item {
                 }
 
                 Button {
+                    id: openButton
+
                     text: "Open Book"
                     highlighted: true
 

@@ -16,7 +16,9 @@ from reader.layout_filter import (
 )
 from reader.models import Chapter, Segment
 from reader.progress import get_or_create_book, resolve_resume_point
-from reader.segmenter import create_segments
+from reader.epub_reader import extract_blocks as extract_epub_blocks
+from reader.epub_reader import extract_nav
+from reader.segmenter import create_segments, create_segments_from_blocks
 from reader.tts import KokoroTTS
 
 
@@ -84,6 +86,9 @@ def prepare_book(
     extension = _check_supported(pdf_path)
 
     raw_pages = None
+    pages = None
+    segments = None
+    blocks = None
 
     if extension == ".pdf":
         status("Extracting PDF...")
@@ -109,33 +114,57 @@ def prepare_book(
     elif extension == ".epub":
         status("Extracting EPUB...")
 
-        pages = extract_epub(pdf_path)
+        # Structured extraction: the EPUB is XHTML, so headings, list
+        # structure, superscripts and MathML are read rather than rendered
+        # away. The plain-text path is kept as a fallback for a file this
+        # cannot open.
+        try:
+            blocks = extract_epub_blocks(pdf_path)
+        except Exception as error:
+            print(f"Structured EPUB extraction failed, falling back: {error}")
+
+            blocks = None
+
+        if blocks:
+            status("Preparing narration...")
+
+            segments = create_segments_from_blocks(
+                blocks,
+                voice=voice,
+                speed=speed,
+            )
+        else:
+            pages = extract_epub(pdf_path)
 
     else:
         status("Reading pasted text...")
 
         pages = extract_text(pdf_path)
 
-    status("Creating segments...")
+    if segments is None:
+        status("Creating segments...")
 
-    segments = create_segments(pages, voice=voice, speed=speed)
+        segments = create_segments(pages, voice=voice, speed=speed)
 
     if not segments:
         raise ValueError("No narratable text was found in this book.")
 
     status("Reading table of contents...")
 
-    chapters = extract_chapters(pdf_path)
+    if blocks:
+        chapters = _epub_chapters(pdf_path, segments)
+    else:
+        chapters = extract_chapters(pdf_path)
 
-    for chapter in chapters:
-        chapter.segment_index = next(
-            (
-                index
-                for index, segment in enumerate(segments)
-                if segment.page >= chapter.page
-            ),
-            None,
-        )
+        for chapter in chapters:
+            chapter.segment_index = next(
+                (
+                    index
+                    for index, segment in enumerate(segments)
+                    if segment.page >= chapter.page
+                ),
+                None,
+            )
 
     # Resolved from the anchor rather than the stored index, so the saved
     # place survives a change of voice, speed, or chunking.
@@ -179,3 +208,53 @@ def prepare_book(
         start_position=start_position,
         chapters=chapters,
     )
+
+
+def _epub_chapters(epub_path: str, segments: list[Segment]) -> list[Chapter]:
+    """Map the EPUB's own navigation onto segments.
+
+    Entries point at a content document and sometimes an element inside it.
+    Both are matched against the source identifiers the segments carry, so a
+    chapter lands where the book says it does rather than on a page number
+    that structured extraction no longer produces.
+    """
+    chapters: list[Chapter] = []
+
+    # First segment that touches each document, and each fragment.
+    document_index: dict[str, int] = {}
+    fragment_index: dict[str, int] = {}
+
+    for index, segment in enumerate(segments):
+        for source_id in segment.source_ids:
+            document = source_id.split("#")[0].split(":")[0]
+
+            document_index.setdefault(document, index)
+
+            if "#" in source_id:
+                fragment_index.setdefault(source_id, index)
+
+    for level, title, target in extract_nav(epub_path):
+        document = target.split("#")[0]
+
+        segment_index = fragment_index.get(target)
+
+        if segment_index is None:
+            segment_index = document_index.get(document)
+
+        page = (
+            segments[segment_index].page
+            if segment_index is not None
+            else 0
+        )
+
+        chapters.append(
+            Chapter(
+                level=level,
+                title=title,
+                page=page,
+                segment_index=segment_index,
+                target=target,
+            )
+        )
+
+    return chapters
