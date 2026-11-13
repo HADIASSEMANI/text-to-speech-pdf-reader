@@ -14,8 +14,12 @@ entitlements_file = (os.environ.get('MACOS_ENTITLEMENTS_FILE') or None) if is_ma
 icon = None
 if sys.platform == 'win32':
     icon = 'assets/app-icon.ico'
-elif is_macos and Path('assets/app-icon.icns').is_file():
+elif is_macos:
+    # Without an .icns, PyInstaller falls back to its own icon, which the Dock
+    # shows until main.py sets the window icon. Fail instead of shipping that.
     icon = 'assets/app-icon.icns'
+    if not Path(icon).is_file():
+        raise SystemExit(f'Missing {icon}; run tools/make_icns.sh')
 
 datas = [
     ('qml', 'qml'),
