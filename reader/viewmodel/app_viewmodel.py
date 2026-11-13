@@ -11,7 +11,11 @@ from PySide6.QtCore import (
 )
 
 from reader.book_loader_worker import BookLoaderWorker
-from reader.cache import enforce_cache_limit
+from reader.cache import (
+    audio_cache_size,
+    clear_audio_cache,
+    enforce_cache_limit,
+)
 from reader.controller import PlaybackState, ReaderController
 from reader.progress import remove_book
 from reader.settings import AppSettings
@@ -48,6 +52,8 @@ class AppViewModel(QObject):
     playbackChanged = Signal()
     chaptersChanged = Signal()
     settingsChanged = Signal()
+    textSizeChanged = Signal()
+    cacheSizeChanged = Signal()
     preparationChanged = Signal()
 
     errorRaised = Signal(str, str)
@@ -107,6 +113,8 @@ class AppViewModel(QObject):
 
         self._chapter_titles = []
         self._current_chapter = -1
+
+        self._cache_size_bytes = 0
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._tick)
@@ -232,6 +240,25 @@ class AppViewModel(QObject):
 
     # settings ---------------------------------------------------------
 
+    @Property(int, constant=True)
+    def minimumTextSize(self):
+        return AppSettings.MIN_TEXT_SIZE
+
+    @Property(int, constant=True)
+    def maximumTextSize(self):
+        return AppSettings.MAX_TEXT_SIZE
+
+    @Property(int, notify=textSizeChanged)
+    def textSize(self):
+        return self.settings.get_text_size()
+
+    @textSize.setter
+    def textSize(self, value: int):
+        value = AppSettings.clamp_text_size(value)
+        if value != self.textSize:
+            self.settings.set_text_size(value)
+            self.textSizeChanged.emit()
+
     @Property(str, notify=settingsChanged)
     def voice(self):
         return self.settings.get_voice()
@@ -324,6 +351,64 @@ class AppViewModel(QObject):
 
             self.settingsChanged.emit()
 
+    @Property(int, notify=cacheSizeChanged)
+    def cacheSizeBytes(self):
+        return self._cache_size_bytes
+
+    @Property(str, notify=cacheSizeChanged)
+    def cacheSizeText(self):
+        return self._format_cache_size(self._cache_size_bytes)
+
+    @staticmethod
+    def _format_cache_size(size_bytes: int) -> str:
+        if size_bytes <= 0:
+            return "Empty"
+
+        gb = size_bytes / (1024 * 1024 * 1024)
+        if gb >= 1.0:
+            return f"{gb:.1f} GB"
+
+        mb = size_bytes / (1024 * 1024)
+        if mb >= 10:
+            return f"{round(mb)} MB"
+        if mb >= 1.0:
+            return f"{mb:.1f} MB"
+
+        kb = max(1, round(size_bytes / 1024))
+        return f"{kb} KB"
+
+    def _refresh_cache_size(self, force_emit: bool = False):
+        changed = self._assign("_cache_size_bytes", audio_cache_size())
+
+        if changed or force_emit:
+            self.cacheSizeChanged.emit()
+
+    @Slot()
+    def clearCache(self):
+        keep = ()
+
+        if self.controller is not None:
+            keep = self.controller.get_current_cache_paths()
+
+        clear_audio_cache(keep=keep)
+
+        if self.controller is not None:
+            keep_stems = {Path(p).stem for p in keep if p}
+
+            for segment in self.controller.segments:
+                if not segment.audio_path:
+                    continue
+
+                audio = Path(segment.audio_path)
+
+                if audio.stem in keep_stems or audio.exists():
+                    continue
+
+                segment.generated = False
+                segment.cues = []
+
+        self._refresh_cache_size(force_emit=True)
+
     # ------------------------------------------------------------------
     # navigation between screens
     # ------------------------------------------------------------------
@@ -334,6 +419,7 @@ class AppViewModel(QObject):
 
     @Slot()
     def showSettings(self):
+        self._refresh_cache_size()
         self._set_page(self.SETTINGS)
 
     @Slot()

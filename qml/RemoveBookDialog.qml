@@ -163,7 +163,7 @@ Dialog {
                 id: yesButton
 
                 text: "Yes"
-                highlighted: true
+                highlighted: Qt.platform.os !== "osx"
 
                 implicitWidth: 92
 

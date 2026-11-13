@@ -232,6 +232,15 @@ __marimo__/
 *.txt
 !requirements.txt
 /pdfs/
+/data/
+*.db
+.DS_Store
+.idea/
+.vscode/
 
 #baseline audio recordings
 /baseline/
+
+# Local agent tooling
+.context-feeder/
+.claude/

@@ -22,6 +22,13 @@ ApplicationWindow {
     font.family: Theme.fontFamily
     font.pixelSize: Theme.fontSizeBody
 
+    Binding {
+        target: window
+        property: "palette"
+        value: Theme.darkPalette
+        when: Qt.platform.os === "osx"
+    }
+
     onClosing: vm.shutdown()
 
     /*
@@ -82,6 +89,7 @@ ApplicationWindow {
 
     Dialog {
         id: pasteDialog
+        objectName: "pasteDialog"
 
         anchors.centerIn: parent
         width: Math.min(720, window.width - 48)
@@ -92,6 +100,8 @@ ApplicationWindow {
         standardButtons: Dialog.Ok | Dialog.Cancel
 
         onOpened: {
+            standardButton(Dialog.Ok).Accessible.name = "Read pasted text"
+            standardButton(Dialog.Cancel).Accessible.name = "Cancel pasting text"
             standardButton(Dialog.Ok).enabled = Qt.binding(function() {
                 return pastedText.text.trim().length > 0
             })
@@ -114,6 +124,7 @@ ApplicationWindow {
 
             TextField {
                 id: textTitle
+                Accessible.name: "Title (optional)"
                 Layout.fillWidth: true
                 placeholderText: "Uses the first line when left blank"
                 maximumLength: 80
@@ -131,6 +142,7 @@ ApplicationWindow {
 
                 TextArea {
                     id: pastedText
+                    Accessible.name: "Text to read aloud"
                     placeholderText: "Paste or type the text you want read aloud..."
                     wrapMode: TextArea.Wrap
                     selectByMouse: true
@@ -148,6 +160,8 @@ ApplicationWindow {
 
     Dialog {
         id: errorDialog
+        objectName: "errorDialog"
+        onOpened: standardButton(Dialog.Ok).Accessible.name = "Dismiss error"
 
         property string message: ""
 
@@ -156,10 +170,20 @@ ApplicationWindow {
         modal: true
         standardButtons: Dialog.Ok
 
-        Label {
-            text: errorDialog.message
-            wrapMode: Label.Wrap
-            width: Math.min(implicitWidth, window.width - 120)
+        width: Math.min(520, window.width - 48)
+        height: Math.min(implicitHeight, window.height - 48)
+
+        contentItem: ScrollView {
+            id: errorScroll
+            clip: true
+            contentWidth: availableWidth
+
+            Label {
+                width: errorScroll.availableWidth
+                text: errorDialog.message
+                textFormat: Text.PlainText
+                wrapMode: Label.Wrap
+            }
         }
     }
 
@@ -179,6 +203,10 @@ ApplicationWindow {
     */
     Dialog {
         id: shortcutsDialog
+        objectName: "shortcutsDialog"
+        width: Math.min(520, window.width - 48)
+        height: Math.min(implicitHeight, window.height - 48)
+        onOpened: standardButton(Dialog.Ok).Accessible.name = "Close keyboard shortcuts"
 
         anchors.centerIn: parent
 
@@ -187,42 +215,50 @@ ApplicationWindow {
         modal: true
         standardButtons: Dialog.Ok
 
-        ColumnLayout {
-            spacing: Theme.spacingTight
+        contentItem: ScrollView {
+            id: shortcutsScroll
+            clip: true
+            contentWidth: availableWidth
 
-            Repeater {
-                model: [
-                    { keys: "Space", action: "Play or pause" },
-                    { keys: "\u2190 / \u2192", action: "Previous or next passage" },
-                    { keys: "Shift \u2190 / \u2192", action: "Skip 15 seconds" },
-                    { keys: "Ctrl L", action: "Go to page" },
-                    { keys: "Ctrl O", action: "Open a book" },
-                    { keys: "Esc", action: "Back to the library" },
-                    { keys: "F1 or ?", action: "Show this list" }
-                ]
+            ColumnLayout {
+                width: shortcutsScroll.availableWidth
+                spacing: Theme.spacingTight
 
-                delegate: RowLayout {
-                    required property var modelData
+                Repeater {
+                    model: [
+                        { keys: "Space", action: "Play or pause" },
+                        { keys: "\u2190 / \u2192", action: "Previous or next passage" },
+                        { keys: "Shift \u2190 / \u2192", action: "Skip 15 seconds" },
+                        { keys: Theme.shortcutLabel("L", Qt.platform.os), action: "Go to page" },
+                        { keys: Theme.shortcutLabel("O", Qt.platform.os), action: "Open a book" },
+                        { keys: "Esc", action: "Back to the library" },
+                        { keys: "F1 or ?", action: "Show this list" }
+                    ]
 
-                    Layout.fillWidth: true
-
-                    spacing: Theme.spacingLarge
-
-                    Label {
-                        text: modelData.keys
-
-                        color: Theme.text
-                        font.family: "monospace"
-
-                        Layout.minimumWidth: 120
-                    }
-
-                    Label {
-                        text: modelData.action
-
-                        color: Theme.textMuted
+                    delegate: RowLayout {
+                        required property var modelData
 
                         Layout.fillWidth: true
+
+                        spacing: Theme.spacingLarge
+
+                        Label {
+                            text: modelData.keys
+
+                            color: Theme.text
+                            font.family: "monospace"
+
+                            Layout.minimumWidth: 110
+                        }
+
+                        Label {
+                            text: modelData.action
+                            wrapMode: Label.Wrap
+
+                            color: Theme.textMuted
+
+                            Layout.fillWidth: true
+                        }
                     }
                 }
             }

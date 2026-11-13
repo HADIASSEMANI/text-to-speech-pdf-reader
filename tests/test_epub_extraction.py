@@ -8,6 +8,7 @@ anchor. It is committed so the coverage travels; the real book is checked as
 well when it is present.
 """
 
+import os
 import unittest
 import zipfile
 from pathlib import Path
@@ -324,10 +325,16 @@ class StructuredExtractionTests(unittest.TestCase):
         )
 
 
-REAL_BOOK = Path("real-book.epub")
+class _MissingBook:
+    def exists(self):
+        return False
 
 
-@unittest.skipUnless(REAL_BOOK.exists(), "the reference book is not on this machine")
+_real_book_path = os.environ.get("BOOKTTS_REAL_EPUB")
+REAL_BOOK = Path(_real_book_path) if _real_book_path else _MissingBook()
+
+
+@unittest.skipUnless(REAL_BOOK.exists(), "reference EPUB is not available")
 class RealBookTests(unittest.TestCase):
     """The passage the work was reported against, not a synthetic stand-in."""
 

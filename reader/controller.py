@@ -905,6 +905,17 @@ class ReaderController:
     def get_current_index(self):
         return self.player.current_index
 
+    def get_current_cache_paths(self) -> tuple[Path, ...]:
+        """Audio and cue paths for the current passage, if any."""
+        segment = self.player.current_segment or self.get_current_segment()
+
+        if segment is None or not segment.audio_path:
+            return ()
+
+        audio = Path(segment.audio_path)
+
+        return (audio, audio.with_suffix(".json"))
+
     def get_current_cue(
         self
     ) -> TextCue | None:

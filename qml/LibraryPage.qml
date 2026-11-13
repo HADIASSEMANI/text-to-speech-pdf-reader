@@ -87,7 +87,7 @@ Item {
                     id: openButton
 
                     text: "Open Book"
-                    highlighted: true
+                    highlighted: Qt.platform.os !== "osx"
 
                     Accessible.name: "Open a book"
 
@@ -126,6 +126,11 @@ Item {
                     fileType: model.fileType
                     missing: model.missing
 
+                    onActiveFocusChanged: {
+                        if (activeFocus)
+                            view.positionViewAtIndex(index, GridView.Contain)
+                    }
+
                     onOpened: vm.openBook(model.path)
                     onDeleted: vm.requestDelete(model.path, model.title)
                 }
@@ -138,6 +143,9 @@ Item {
 
                 visible: view.count === 0
 
+                width: parent.width
+                wrapMode: Label.Wrap
+                horizontalAlignment: Label.AlignHCenter
                 text: "No books or texts yet. Open a book or paste text to begin."
 
                 color: Theme.textFaint

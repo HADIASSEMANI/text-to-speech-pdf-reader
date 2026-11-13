@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Listen to PDF and EPUB books with Book TTS Reader. Local Kokoro speech, synchronized highlighting, and saved reading progress. Free for Windows and macOS.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; connect-src 'self'; font-src 'none'; media-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Book TTS Reader — listen to your books</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="header-inner wrap">
+      <a class="wordmark" href="#" aria-label="Book TTS Reader home">
+        <span class="wordmark-icon" aria-hidden="true">
+          <svg viewBox="0 0 28 28"><path d="M14 7c-3-3-7-3-11-2v17c4-1 8-1 11 2 3-3 7-3 11-2V5c-4-1-8-1-11 2Zm0 0v17M7 10v6m3-8v10m8-8v6m3-7v9"/></svg>
+        </span>
+        <span>Book TTS Reader</span>
+      </a>
+      <nav aria-label="Main navigation">
+        <a href="#sample">Sample</a>
+        <a href="#features">Features</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#download">Download</a>
+        <a href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader">GitHub <span aria-hidden="true">↗</span></a>
+      </nav>
+      <div class="smart-download smart-compact" data-smart-download>
+        <p class="download-message" hidden></p>
+        <div class="download-options">
+          <a class="button secondary" data-platform="windows" href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/releases/latest">
+            <span><span class="download-label">Download for Windows</span><small>Installer (.exe)</small></span>
+            <span aria-hidden="true">↓</span>
+          </a>
+          <a class="button secondary" data-platform="macos" href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/releases/latest">
+            <span><span class="download-label">Download for macOS</span><small>Apple silicon (arm64) · .dmg</small></span>
+            <span aria-hidden="true">↓</span>
+          </a>
+        </div>
+        <p class="mac-note" hidden>Requires a Mac with Apple silicon (M1 or later).</p>
+        <div class="download-extras">
+          <button class="platform-toggle" type="button" hidden></button>
+          <a class="source-link" href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/blob/main/README.md#run-from-source">Run from source <span aria-hidden="true">↗</span></a>
+        </div>
+        <span class="download-announcement sr-only" role="status" aria-live="polite" aria-atomic="true"></span>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero-outer" aria-labelledby="hero-title">
+      <div class="hero-card">
+        <svg class="hero-curve" viewBox="0 0 1200 500" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M-40 420 C 260 390, 440 120, 760 190 C 980 238, 1110 110, 1240 70" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-opacity="0.55"/>
+        </svg>
+        <svg class="hero-blob hero-blob-ink" viewBox="0 0 80 80" aria-hidden="true">
+          <path d="M44.5 10.2C56.8 13.5 68.4 23.1 70.6 35.6C72.8 48.1 65.5 63.4 53.1 69.3C40.7 75.2 23.2 71.7 13.8 61.3C4.4 50.9 3.1 33.6 11.2 21.8C19.3 10 32.2 6.9 44.5 10.2Z" fill="#181818"/>
+        </svg>
+        <svg class="hero-blob hero-blob-sage" viewBox="0 0 90 90" aria-hidden="true">
+          <path d="M48.2 8.6C62.1 11.4 76.2 20.8 79.8 34.5C83.4 48.2 76.5 66.1 63.3 74.5C50.1 82.9 30.6 81.8 18.4 71.9C6.2 62 1.3 43.3 6.9 28.8C12.5 14.3 34.3 5.8 48.2 8.6Z" fill="#5F7A58"/>
+        </svg>
+
+        <div class="hero-copy">
+          <div class="app-icon-tile" aria-hidden="true">
+            <svg viewBox="0 0 36 36">
+              <path d="M18 10c-4-3.5-9-3.5-14-2.2v21c5-1.2 10-1.2 14 2.2 4-3.4 9-3.4 14-2.2v-21C27 6.5 22 6.5 18 10Zm0 0v21M9 14v7m3.5-9.5v12m11-9.5v7m3.5-8.5v10.5"/>
+            </svg>
+          </div>
+          <h1 id="hero-title">Book TTS Reader — listen to your books</h1>
+          <p class="hero-subline">Listen to your PDFs, EPUBs, and pasted text with a local Kokoro neural voice and synchronized word and line highlighting.</p>
+
+          <div class="smart-download hero-download" data-smart-download>
+            <p class="download-message" hidden></p>
+            <div class="download-options">
+              <a class="button pill-cta" data-platform="windows" href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/releases/latest">
+                <span>
+                  <span class="download-label">Download for Windows</span>
+                  <small>Installer (.exe)</small>
+                </span>
+                <span class="cta-arrow" aria-hidden="true">↓</span>
+              </a>
+              <a class="button pill-cta" data-platform="macos" href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/releases/latest">
+                <span>
+                  <span class="download-label">Download for macOS</span>
+                  <small>Apple silicon (arm64) · .dmg</small>
+                </span>
+                <span class="cta-arrow" aria-hidden="true">↓</span>
+              </a>
+            </div>
+            <p class="mac-note" hidden>Requires a Mac with Apple silicon (M1 or later).</p>
+            <div class="download-extras">
+              <button class="platform-toggle" type="button" hidden></button>
+              <a class="source-link" href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/blob/main/README.md#run-from-source">Run from source <span aria-hidden="true">↗</span></a>
+            </div>
+            <span class="download-announcement sr-only" role="status" aria-live="polite" aria-atomic="true"></span>
+          </div>
+
+          <div class="hero-actions-row">
+            <a class="sample-jump-link" href="#sample">Listen to a sample <span aria-hidden="true">↓</span></a>
+            <span class="hero-meta-note">Free &amp; open source · AGPL-3.0 · No account</span>
+          </div>
+        </div>
+
+        <div class="hero-mockups" aria-hidden="true">
+          <div class="mockup-card mockup-library">
+            <div class="mockup-bar">
+              <span class="mockup-dots"><i></i><i></i><i></i></span>
+              <span class="mockup-title">Library</span>
+            </div>
+            <div class="mockup-grid">
+              <div class="mockup-book">
+                <div class="book-cover cover-pink"></div>
+                <div class="book-lines"><span>Pride &amp; Prejudice</span><small>Page 14 · 38%</small></div>
+              </div>
+              <div class="mockup-book">
+                <div class="book-cover cover-blue"></div>
+                <div class="book-lines"><span>Compilers</span><small>Page 142 · 64%</small></div>
+              </div>
+              <div class="mockup-book">
+                <div class="book-cover cover-sage"></div>
+                <div class="book-lines"><span>Middlemarch</span><small>Chapter IV · 19%</small></div>
+              </div>
+              <div class="mockup-book">
+                <div class="book-cover cover-ink"></div>
+                <div class="book-lines"><span>Pasted notes</span><small>Segment 2 / 5</small></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mockup-card mockup-reader">
+            <div class="mockup-bar">
+              <span class="mockup-dots"><i></i><i></i><i></i></span>
+              <span class="mockup-title">Pride and Prejudice · Ch. I</span>
+              <span class="mockup-badge">Page 1</span>
+            </div>
+            <div class="mockup-page">
+              <p class="mockup-line">It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.</p>
+              <p class="mockup-line is-highlighted">However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families.</p>
+              <p class="mockup-line">“My dear Mr. Bennet,” said his lady to him one day, “have you heard that Netherfield Park is let at last?”</p>
+            </div>
+          </div>
+
+          <div class="mockup-card mockup-transport">
+            <div class="mockup-progress">
+              <span>0:09</span>
+              <div class="mockup-track"><div class="mockup-fill"></div></div>
+              <span>0:24</span>
+            </div>
+            <div class="mockup-controls">
+              <span class="mockup-chip">af_heart · 1.0×</span>
+              <div class="mockup-btns">
+                <span>−15s</span>
+                <span class="mockup-play">▶</span>
+                <span>+15s</span>
+              </div>
+              <span class="mockup-chip">Seg 1 / 12</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section wrap" id="sample" aria-labelledby="sample-title">
+      <div class="section-header">
+        <div class="section-index" aria-hidden="true">
+          <span class="index-square"></span>
+          <span class="index-num">01<sup>/04</sup></span>
+        </div>
+        <h2 id="sample-title">Listen to a sample</h2>
+      </div>
+
+      <div class="sample-card">
+        <div class="sample-meta">
+          <div>
+            <span class="sample-kicker">Jane Austen · Pride and Prejudice, Chapter I</span>
+            <p class="sample-instructions">Press play to hear real audio synthesized locally by Kokoro, or click a sentence to jump right to it.</p>
+          </div>
+          <span class="voice-badge" aria-label="Voice model and default voice">Voice: <strong>af_heart</strong> (1.0×)</span>
+        </div>
+
+        <blockquote class="sample-passage" id="sample-passage" cite="https://www.gutenberg.org/ebooks/1342">
+          <span class="sample-cue is-active" data-cue-index="0" data-start="0.0" data-end="2.875" tabindex="0" role="button">It is a truth universally acknowledged,</span>
+          <span class="sample-cue" data-cue-index="1" data-start="2.875" data-end="6.225" tabindex="0" role="button">that a single man in possession of a good fortune,</span>
+          <span class="sample-cue" data-cue-index="2" data-start="6.225" data-end="8.3" tabindex="0" role="button">must be in want of a wife.</span>
+          <span class="sample-cue" data-cue-index="3" data-start="8.3" data-end="14.8" tabindex="0" role="button">However little known the feelings or views of such a man may be on his first entering a neighbourhood,</span>
+          <span class="sample-cue" data-cue-index="4" data-start="14.8" data-end="19.25" tabindex="0" role="button">this truth is so well fixed in the minds of the surrounding families,</span>
+          <span class="sample-cue" data-cue-index="5" data-start="19.25" data-end="24.275" tabindex="0" role="button">that he is considered the rightful property of some one or other of their daughters.</span>
+        </blockquote>
+
+        <div class="sample-player" role="region" aria-label="Sample narration audio player">
+          <audio id="sample-audio" preload="metadata" src="assets/sample.m4a"></audio>
+
+          <button class="sample-play-btn" id="sample-play" type="button" aria-label="Play sample narration" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path id="sample-play-icon" d="m8 5 11 7-11 7Z" fill="currentColor" stroke="none"/>
+            </svg>
+          </button>
+
+          <div class="sample-timeline">
+            <div class="sample-progress-bar" id="sample-progress-bar" role="slider" tabindex="0" aria-label="Seek sample playback position" aria-valuemin="0" aria-valuemax="24" aria-valuenow="0" aria-valuetext="0 seconds of 24 seconds">
+              <div class="sample-progress-fill" id="sample-progress-fill"></div>
+            </div>
+            <div class="sample-time-row">
+              <span id="sample-current-time">0:00</span>
+              <span class="sample-voice-label">Kokoro-82M · af_heart · 24 kHz local neural speech</span>
+              <span id="sample-duration">0:24</span>
+            </div>
+          </div>
+        </div>
+
+        <noscript>
+          <div class="noscript-audio">
+            <p>JavaScript is disabled. Listen with your browser’s built-in audio player:</p>
+            <audio controls preload="metadata" src="assets/sample.m4a">
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+        </noscript>
+      </div>
+    </section>
+
+    <section class="section wrap" id="features" aria-labelledby="features-title">
+      <div class="section-header">
+        <div class="section-index" aria-hidden="true">
+          <span class="index-square"></span>
+          <span class="index-num">02<sup>/04</sup></span>
+        </div>
+        <h2 id="features-title">Features</h2>
+      </div>
+
+      <div class="features-grid">
+        <article class="feature-card" id="feature-formats">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 6c-2.5-2-6-2-9-1v14c3-1 6.5-1 9 1 2.5-2 6-2 9-1V5c-3-1-6.5-1-9 1Zm0 0v14"/></svg>
+          </div>
+          <h3>PDF, EPUB, and pasted text</h3>
+          <p>Open a PDF or EPUB or paste a passage directly; EPUB headings, lists, superscripts, subscripts, MathML equations, and printed page numbers keep their structure.</p>
+        </article>
+
+        <article class="feature-card" id="feature-highlighting">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10m-10 5h14"/><circle cx="18" cy="12" r="2.5"/></svg>
+          </div>
+          <h3>Synchronized highlighting &amp; click-to-read</h3>
+          <p>Word and line highlighting follows the audio in real time, and clicking any passage starts reading right from that spot.</p>
+        </article>
+
+        <article class="feature-card" id="feature-resume">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1Z"/></svg>
+          </div>
+          <h3>Saved reading progress to the second</h3>
+          <p>Your exact position is anchored in a local SQLite database and resumes where you left off across restarts and changes to narration settings.</p>
+        </article>
+
+        <article class="feature-card" id="feature-voice">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5Zm4.5 3.5a5 5 0 0 1 0 7m3-9.5a9 9 0 0 1 0 12"/></svg>
+          </div>
+          <h3>Local Kokoro voices at your pace</h3>
+          <p>Select a Kokoro-82M voice and adjust playback speed for your book while upcoming segments preload and cache in the background.</p>
+        </article>
+
+        <article class="feature-card" id="feature-skip">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5m4-1v5l3 2"/></svg>
+          </div>
+          <h3>Chapter, page, and 15-second navigation</h3>
+          <p>Skip 15 seconds forward or backward seamlessly across segment boundaries, or jump straight to any chapter or printed page.</p>
+        </article>
+
+        <article class="feature-card" id="feature-filtering">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+          </div>
+          <h3>Clean layout filtering</h3>
+          <p>Automatically skips running headers, footers, and page numbers, with optional toggles to include footnotes, captions, and sidebars.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section wrap" id="privacy" aria-labelledby="privacy-title">
+      <div class="section-header">
+        <div class="section-index" aria-hidden="true">
+          <span class="index-square"></span>
+          <span class="index-num">03<sup>/04</sup></span>
+        </div>
+        <h2 id="privacy-title">Privacy</h2>
+      </div>
+
+      <div class="privacy-card">
+        <div class="privacy-grid">
+          <div class="privacy-copy">
+            <h3>Your books stay on your computer.</h3>
+            <ul class="privacy-list">
+              <li>Kokoro generates speech locally on your computer.</li>
+              <li>No account. No telemetry, analytics, or cloud services.</li>
+              <li>Your books and pasted text are never uploaded.</li>
+              <li>Your library, reading position, and generated audio cache are stored locally on your disk, with a Clear cache button in Settings whenever you want to free space.</li>
+            </ul>
+            <p class="network-note"><strong>The initial download needs a connection.</strong> The app downloads Kokoro’s configuration, model weights, and selected voice files from Hugging Face (<code>hexgrad/Kokoro-82M</code>) when they aren’t already cached. After that, speech generation runs completely offline.</p>
+          </div>
+
+          <div class="privacy-visual">
+            <svg class="privacy-diagram" viewBox="0 0 480 230" role="img" aria-labelledby="diagram-title diagram-desc">
+              <title id="diagram-title">Local speech generation diagram</title>
+              <desc id="diagram-desc">Book, voice model, and speakers are inside your computer. A crossed-out cloud outside it indicates no cloud server is used.</desc>
+              <rect class="diagram-box" x="10" y="10" width="460" height="145" rx="18"/>
+              <text class="diagram-kicker" x="30" y="38">YOUR COMPUTER</text>
+              <g class="diagram-lines">
+                <path d="M49 69c10-3 17-1 22 3 5-4 12-6 22-3v32c-10-3-17-1-22 3-5-4-12-6-22-3Zm22 3v32M117 86h31m-6-5 6 5-6 5"/>
+                <rect x="212" y="68" width="35" height="35" rx="8"/>
+                <path d="M222 80v11m7-16v21m7-16v11M272 86h31m-6-5 6 5-6 5M367 79h-9v15h9l14 10V69Zm23-2c7 5 7 15 0 20m6-27c12 9 12 26 0 35"/>
+              </g>
+              <text x="71" y="132" text-anchor="middle">Book</text>
+              <text x="230" y="132" text-anchor="middle">Voice model</text>
+              <text x="380" y="132" text-anchor="middle">Speakers</text>
+              <g class="diagram-cloud">
+                <path d="M179 208h-27a10 10 0 0 1-1-20 15 15 0 0 1 29-2 11 11 0 0 1-1 22ZM144 215l41-40"/>
+                <text x="202" y="202">No server · No cloud</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+
+        <details class="storage-details">
+          <summary>What is stored, and where?</summary>
+          <div class="storage-content">
+            <p>The library and reading progress anchors live in <code>reader.db</code>; generated WAV audio and JSON timing cues live in <code>cache/</code>; pasted texts live in <code>pasted-texts/</code>. The audio cache has a configurable size limit and can be cleared on demand in Settings while keeping your library and reading positions.</p>
+            <dl>
+              <dt>Windows</dt>
+              <dd><code>%LOCALAPPDATA%\BookTTSReader</code> (installer defaults to <code>%LOCALAPPDATA%\Programs\BookTTSReader</code>)</dd>
+              <dt>macOS</dt>
+              <dd><code>~/Library/Application Support/BookTTSReader</code></dd>
+              <dt>Linux</dt>
+              <dd><code>$XDG_DATA_HOME/BookTTSReader</code> (or <code>~/.local/share/BookTTSReader</code>)</dd>
+            </dl>
+            <p>Model and voice downloads are stored in the Hugging Face cache, normally <code>~/.cache/huggingface/hub</code> (or <code>HF_HOME</code> / <code>HUGGINGFACE_HUB_CACHE</code>). Preferences use Qt’s settings storage under <code>BookTTS</code> / <code>BookTTSReader</code>.</p>
+            <p>Running from source clears generated audio on exit by default. Set <code>BOOKTTS_KEEP_CACHE=1</code> to keep it across development runs.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="section wrap" id="download" aria-labelledby="download-title">
+      <div class="section-header">
+        <div class="section-index" aria-hidden="true">
+          <span class="index-square"></span>
+          <span class="index-num">04<sup>/04</sup></span>
+        </div>
+        <h2 id="download-title">Download</h2>
+      </div>
+
+      <p class="section-lead">Free and open source. Choose your platform to get started.</p>
+
+      <div class="platform-grid">
+        <article class="platform-panel" data-panel="macos">
+          <div class="platform-title">
+            <span class="platform-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="13" rx="2"/><path d="M8 21h8m-4-5v5"/></svg>
+            </span>
+            <div>
+              <h3>macOS</h3>
+              <span class="platform-ext">.dmg · Apple silicon (arm64)</span>
+            </div>
+          </div>
+          <p>Open the disk image and drag Book TTS Reader to <code>/Applications</code>.</p>
+          <p class="install-note">Requires a Mac with Apple silicon (M1 or later). Intel Macs: <a href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/blob/main/README.md#run-from-source">run from source</a>.</p>
+          <a class="button secondary" href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/releases/latest">Download for macOS <span aria-hidden="true">↓</span></a>
+          <p class="install-note">The macOS application is code-signed and notarized.</p>
+        </article>
+
+        <article class="platform-panel" data-panel="windows">
+          <div class="platform-title">
+            <span class="platform-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="m3 5 8-1v7H3Zm10-1 8-1v8h-8ZM3 13h8v7l-8-1Zm10 0h8v8l-8-1Z"/></svg>
+            </span>
+            <div>
+              <h3>Windows</h3>
+              <span class="platform-ext">Setup.exe</span>
+            </div>
+          </div>
+          <p>Run the installer (<code>BookTTSReader-Setup.exe</code>). It installs into <code>%LOCALAPPDATA%\Programs\BookTTSReader</code> for your user without administrator privileges.</p>
+          <a class="button secondary" href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/releases/latest">Download for Windows <span aria-hidden="true">↓</span></a>
+          <p class="install-note">The Windows installer is not yet code-signed. Microsoft Defender SmartScreen may show an unknown-publisher warning on first run.</p>
+        </article>
+
+        <article class="platform-panel" data-panel="linux">
+          <div class="platform-title">
+            <span class="platform-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="m8 9-4 3 4 3m8-6 4 3-4 3m-2-9-4 12"/></svg>
+            </span>
+            <div>
+              <h3>Build from source</h3>
+              <span class="platform-ext">Python 3.12 · Cross-platform</span>
+            </div>
+          </div>
+          <p>Clone the repository, create a Python 3.12 virtual environment, install <code>requirements.txt</code>, and run <code>python main.py</code>.</p>
+          <a class="button secondary" href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/blob/main/README.md#run-from-source">Run from source <span aria-hidden="true">↗</span></a>
+          <p class="install-note">Works on Linux, Intel Macs, Apple silicon Macs, and Windows. Requires Python 3.12.</p>
+        </article>
+      </div>
+
+      <p class="checksum-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Zm-4 9 3 3 5-6"/></svg>
+        <span>SHA-256 checksums are published with every release. Verify your download before running it.</span>
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer wrap">
+    <div class="footer-main">
+      <div>
+        <span class="footer-wordmark">Book TTS Reader</span>
+        <p class="footer-sample-credit">Sample generated with Kokoro-82M (Apache-2.0); text: Jane Austen, Pride and Prejudice (public domain).</p>
+      </div>
+      <p class="footer-license">By Hadi Assemani. Licensed under <a href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/blob/main/LICENSE">AGPL-3.0</a>, because the app depends on PyMuPDF.</p>
+      <nav aria-label="Project links">
+        <a href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices</a>
+        <a href="https://github.com/HADIASSEMANI/text-to-speech-pdf-reader">Source code <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
+    <p class="security-note">To report a security vulnerability, please send a private email to hadi@assemani.com rather than opening a public issue.</p>
+  </footer>
+</body>
+</html>

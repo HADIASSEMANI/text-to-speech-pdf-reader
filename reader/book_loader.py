@@ -17,6 +17,7 @@ from reader.layout_filter import (
 from reader.models import Chapter, Segment
 from reader.progress import get_or_create_book, resolve_resume_point
 from reader.epub_reader import extract_blocks as extract_epub_blocks
+from reader.epub_reader import EpubLimitError
 from reader.epub_reader import extract_nav
 from reader.segmenter import create_segments, create_segments_from_blocks
 from reader.tts import KokoroTTS
@@ -120,6 +121,10 @@ def prepare_book(
         # cannot open.
         try:
             blocks = extract_epub_blocks(pdf_path)
+        except EpubLimitError:
+            # An oversized archive is refused outright. Falling back would
+            # hand the same file to another parser to read in full.
+            raise
         except Exception as error:
             print(f"Structured EPUB extraction failed, falling back: {error}")
 

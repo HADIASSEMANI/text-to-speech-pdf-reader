@@ -51,7 +51,44 @@ QtObject {
     readonly property int fontSizeTitle: 20
     readonly property int fontSizeDisplay: 30
 
-    readonly property string fontFamily: "Segoe UI"
+    readonly property string fontFamily: Qt.platform.os === "osx"
+                                         ? Qt.application.font.family : "Segoe UI"
+
+    function shortcutLabel(key, platform) {
+        return (platform === "osx" ? "\u2318 " : "Ctrl ") + key
+    }
+
+    // Fusion propagates explicit palette roles to controls and popups.
+    // Pin every surface/text role so system appearance cannot mix themes.
+    readonly property Palette darkPalette: Palette {
+        window: Theme.background
+        windowText: Theme.text
+        base: Theme.surface
+        alternateBase: Theme.surfaceRaised
+        text: Theme.text
+        button: Theme.surfaceHigh
+        buttonText: Theme.text
+        brightText: Theme.highlightText
+        placeholderText: Theme.textFaint
+        toolTipBase: Theme.surfaceHigh
+        toolTipText: Theme.text
+        highlight: Theme.accent
+        highlightedText: Theme.background
+        link: Theme.accent
+        linkVisited: Theme.accent
+        light: Theme.borderStrong
+        midlight: Theme.border
+        mid: Theme.border
+        dark: Theme.background
+        shadow: Theme.background
+        disabled {
+            text: Theme.textDisabled
+            windowText: Theme.textDisabled
+            buttonText: Theme.textDisabled
+            highlight: Theme.borderStrong
+            highlightedText: Theme.textMuted
+        }
+    }
 
     // Below this the reader stacks its controls and the library drops to a
     // single column. One number, so every screen breaks at the same width.

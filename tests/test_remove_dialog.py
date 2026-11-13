@@ -24,9 +24,10 @@ from reader.paths import resource_path  # noqa: E402
 
 
 LONG_TITLE = (
-    "A Very Long Book Title That Keeps Going Well Past The Width Of The "
-    "Dialog, With A Subtitle, An Edition Note, A Publisher, A Year And "
-    "An Identifier So That Wrapping And Eliding Can Be Tested"
+    "A Deliberately Long Sample Book Title, Seventh Edition -- by First "
+    "Author and Second Author -- 7th edition, Sample City (State), 2023 -- "
+    "Sample Publisher -- isbn13 0000000000000 -- 0123456789abcdef0123456789ab "
+    "-- sample library export"
 )
 
 HARNESS = """

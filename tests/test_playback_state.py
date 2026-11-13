@@ -88,6 +88,16 @@ class ControllerTestCase(unittest.TestCase):
 
         root = Path(self.directory.name)
 
+        # Re-keyed narration and cleanup must use the same temporary cache
+        # as the fixture audio, never the user's Application Support folder.
+        for target in ("reader.paths.cache_dir", "reader.controller.cache_dir"):
+            cache_patcher = patch(target, return_value=root)
+            cache_patcher.start()
+            self.addCleanup(cache_patcher.stop)
+        cache_patcher = patch("reader.cache.CACHE_DIR", root)
+        cache_patcher.start()
+        self.addCleanup(cache_patcher.stop)
+
         self.database = root / "reader.db"
 
         patcher = patch("reader.database.DATABASE_PATH", self.database)

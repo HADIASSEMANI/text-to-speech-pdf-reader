@@ -102,8 +102,8 @@ Item {
                    listener asked for it, and pressing again stops it.
                 */
                 text: vm.playing ? "Pause" : "Play"
+                highlighted: Qt.platform.os !== "osx"
 
-                highlighted: true
 
                 implicitWidth: Math.max(implicitContentWidth + 40, 110)
 

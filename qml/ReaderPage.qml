@@ -43,7 +43,14 @@ Item {
         }
     }
 
+    onShownChanged: {
+        if (shown)
+            Qt.callLater(root.showHighlight)
+    }
+
     function ensureHighlightVisible() {
+        if (vm.highlightEnd <= vm.highlightStart)
+            return
         const flick = scroll.contentItem
 
         if (flick.contentHeight <= flick.height)
@@ -297,7 +304,10 @@ Item {
                     selectionColor: Theme.highlight
                     selectedTextColor: Theme.highlightText
 
-                    font.pixelSize: Theme.fontSizeReader
+                    // Rendering only: never reload or rewrite segment content.
+                    font.pixelSize: vm.textSize
+                    onFontChanged: Qt.callLater(root.showHighlight)
+                    onContentHeightChanged: Qt.callLater(root.ensureHighlightVisible)
 
                     Accessible.role: Accessible.StaticText
                     Accessible.name: "Passage being read"

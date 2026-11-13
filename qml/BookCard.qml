@@ -15,12 +15,27 @@ Rectangle {
     signal opened()
     signal deleted()
 
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: title + (subtitle ? ", " + subtitle : "")
+    Accessible.description: "Open " + title + (subtitle ? ". " + subtitle : "")
+    Accessible.onPressAction: card.opened()
+
+    Keys.onPressed: (event) => {
+        if (card.activeFocus && (event.key === Qt.Key_Return
+                || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
+            if (!event.isAutoRepeat)
+                card.opened()
+            event.accepted = true
+        }
+    }
+
     radius: Theme.radiusLarge
 
     color: hover.hovered ? Theme.surfaceHover : Theme.surfaceRaised
 
-    border.width: 1
-    border.color: card.missing
+    border.width: activeFocus ? 2 : 1
+    border.color: activeFocus ? Theme.accent : card.missing
                   ? (hover.hovered ? "#5a3a40" : Theme.dangerBorder)
                   : (hover.hovered ? Theme.borderStrong : Theme.border)
 
@@ -101,16 +116,30 @@ Rectangle {
         }
 
         ToolButton {
+            id: removeButton
+            objectName: "removeBookButton"
             text: "Delete"
+            activeFocusOnTab: true
+            Accessible.name: "Remove " + card.title + " from the library"
+            Accessible.description: card.subtitle + ". The original file is kept."
 
-            // Only offered once the card is under the pointer: a library of
-            // cards should read as covers, not as a row of controls.
-            opacity: hover.hovered ? 1 : 0
-            visible: opacity > 0
-
-            Behavior on opacity {
-                NumberAnimation { duration: Theme.transitionDuration }
+            Keys.onReturnPressed: (event) => {
+                if (!event.isAutoRepeat) clicked()
             }
+            Keys.onEnterPressed: (event) => {
+                if (!event.isAutoRepeat) clicked()
+            }
+
+            background: Rectangle {
+                radius: Theme.radiusSmall
+                color: removeButton.hovered || removeButton.down
+                       ? Theme.surfaceHover : "transparent"
+                border.width: removeButton.activeFocus ? 2 : 0
+                border.color: Theme.accent
+            }
+
+            // Keep it in the tab chain even before the pointer arrives.
+            opacity: hover.hovered || card.activeFocus || activeFocus ? 1 : 0
 
             ToolTip.visible: hovered
             ToolTip.text: "Remove this book from the library"

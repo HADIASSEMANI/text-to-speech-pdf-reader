@@ -39,6 +39,59 @@ EPUB_NS = "http://www.idpf.org/2007/ops"
 
 CONTAINER_PATH = "META-INF/container.xml"
 
+MAX_MEMBER_BYTES = 32 * 1024 * 1024
+MAX_TOTAL_BYTES = 256 * 1024 * 1024
+
+
+class EpubLimitError(ValueError):
+    """An EPUB exceeds the safe uncompressed read limits."""
+
+
+class _EpubArchive(zipfile.ZipFile):
+    """Keep one byte budget for all member reads in this archive."""
+
+    def __init__(self, path):
+        super().__init__(path)
+        self._total_bytes_read = 0
+
+    def read_member(self, path: str) -> bytes:
+        info = self.getinfo(path)
+        if info.file_size > MAX_MEMBER_BYTES:
+            raise EpubLimitError(
+                f"EPUB member {path!r} exceeds the {MAX_MEMBER_BYTES}-byte "
+                "uncompressed member limit."
+            )
+
+        chunks = []
+        member_bytes = 0
+        with self.open(info) as source:
+            while True:
+                # Probe at most one byte beyond either budget, even when
+                # the member's declared size understates its actual size.
+                size = min(
+                    64 * 1024,
+                    MAX_MEMBER_BYTES - member_bytes + 1,
+                    MAX_TOTAL_BYTES - self._total_bytes_read + 1,
+                )
+                chunk = source.read(size)
+                if not chunk:
+                    break
+                member_bytes += len(chunk)
+                self._total_bytes_read += len(chunk)
+                if member_bytes > MAX_MEMBER_BYTES:
+                    raise EpubLimitError(
+                        f"EPUB member {path!r} exceeds the {MAX_MEMBER_BYTES}-byte "
+                        "uncompressed member limit."
+                    )
+                if self._total_bytes_read > MAX_TOTAL_BYTES:
+                    raise EpubLimitError(
+                        f"EPUB exceeds the {MAX_TOTAL_BYTES}-byte total "
+                        f"uncompressed read limit while reading {path!r}."
+                    )
+                chunks.append(chunk)
+        return b"".join(chunks)
+
+
 HEADING_TAGS = {"h1": 1, "h2": 2, "h3": 3, "h4": 4, "h5": 5, "h6": 6}
 
 BLOCK_TAGS = {"p", "li", "blockquote", "figcaption", "dd", "dt", "pre"}
@@ -388,9 +441,9 @@ def inline_content(element, state: dict) -> RunBuilder:
 # ----------------------------------------------------------------------
 
 
-def _read_package(archive: zipfile.ZipFile) -> tuple[str, list[str]]:
+def _read_package(archive: _EpubArchive) -> tuple[str, list[str]]:
     """Return the OPF path and its spine, as content-document paths."""
-    container = ElementTree.fromstring(archive.read(CONTAINER_PATH))
+    container = ElementTree.fromstring(archive.read_member(CONTAINER_PATH))
 
     rootfile = container.find(f".//{{{CONTAINER_NS}}}rootfile")
 
@@ -399,7 +452,7 @@ def _read_package(archive: zipfile.ZipFile) -> tuple[str, list[str]]:
 
     opf_path = rootfile.get("full-path")
 
-    package = ElementTree.fromstring(archive.read(opf_path))
+    package = ElementTree.fromstring(archive.read_member(opf_path))
 
     manifest = {}
 
@@ -430,8 +483,8 @@ def _read_package(archive: zipfile.ZipFile) -> tuple[str, list[str]]:
     return opf_path, documents
 
 
-def _parse_document(archive: zipfile.ZipFile, path: str):
-    data = archive.read(path)
+def _parse_document(archive: _EpubArchive, path: str):
+    data = archive.read_member(path)
 
     try:
         return ElementTree.fromstring(data)
@@ -461,7 +514,7 @@ def extract_blocks(epub_path: str) -> list[ContentBlock]:
     """
     blocks: list[ContentBlock] = []
 
-    with zipfile.ZipFile(epub_path) as archive:
+    with _EpubArchive(epub_path) as archive:
         _opf, documents = _read_package(archive)
 
         page_label = None
@@ -570,7 +623,7 @@ def _flow_elements(body):
 
 
 def _extract_document(
-    archive: zipfile.ZipFile,
+    archive: _EpubArchive,
     document: str,
     body,
     blocks: list[ContentBlock],
@@ -676,12 +729,12 @@ def extract_nav(epub_path: str) -> list[tuple[int, str, str]]:
     """
     entries: list[tuple[int, str, str]] = []
 
-    with zipfile.ZipFile(epub_path) as archive:
+    with _EpubArchive(epub_path) as archive:
         opf_path, _documents = _read_package(archive)
 
         base = posixpath.dirname(opf_path)
 
-        package = ElementTree.fromstring(archive.read(opf_path))
+        package = ElementTree.fromstring(archive.read_member(opf_path))
 
         nav_href = None
         ncx_href = None
@@ -714,7 +767,7 @@ def _resolve(document: str, href: str) -> str:
     return posixpath.normpath(posixpath.join(directory, href))
 
 
-def _read_nav_document(archive: zipfile.ZipFile, path: str):
+def _read_nav_document(archive: _EpubArchive, path: str):
     try:
         root = _parse_document(archive, path)
     except KeyError:
@@ -765,7 +818,7 @@ def _read_nav_list(nav, document: str, level: int = 1):
     return entries
 
 
-def _read_ncx(archive: zipfile.ZipFile, path: str):
+def _read_ncx(archive: _EpubArchive, path: str):
     try:
         root = _parse_document(archive, path)
     except KeyError:

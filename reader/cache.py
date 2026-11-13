@@ -5,6 +5,78 @@ from pathlib import Path
 from reader.paths import cache_dir
 
 CACHE_DIR = cache_dir()
+_CACHE_SUFFIXES = {".wav", ".json"}
+
+
+def _is_temporary_cache_file(path: Path) -> bool:
+    """True for in-flight atomic writes (``<stem>.part.wav`` / ``.part.json``)."""
+    name = path.name.lower()
+    return name.endswith(".part.wav") or name.endswith(".part.json")
+
+
+def _iter_cache_files():
+    """Yield finished generated WAV and cue files in ``CACHE_DIR``."""
+    try:
+        candidates = list(CACHE_DIR.iterdir())
+    except OSError:
+        return
+
+    for path in candidates:
+        if (
+            not path.is_file()
+            or path.suffix.lower() not in _CACHE_SUFFIXES
+            or _is_temporary_cache_file(path)
+        ):
+            continue
+        yield path
+
+
+def audio_cache_size() -> int:
+    """Return total bytes used by generated WAV and cue files in ``CACHE_DIR``."""
+    total = 0
+
+    for path in _iter_cache_files():
+        try:
+            total += path.stat().st_size
+        except OSError:
+            continue
+
+    return total
+
+
+def clear_audio_cache(keep=()) -> int:
+    """Delete generated WAV and cue files in ``CACHE_DIR``, returning bytes freed.
+
+    Paths (or their stems) passed in ``keep`` and in-progress ``.part`` files
+    are preserved. Files that cannot be deleted are skipped silently.
+    """
+    keep_paths = set()
+    keep_stems = set()
+
+    for item in keep:
+        if not item:
+            continue
+        p = Path(item)
+        keep_paths.add(p)
+        if p.suffix.lower() in _CACHE_SUFFIXES:
+            keep_stems.add(p.stem)
+
+    removed_bytes = 0
+
+    for path in _iter_cache_files():
+        if path in keep_paths or path.stem in keep_stems:
+            continue
+
+        try:
+            size = path.stat().st_size
+            path.unlink()
+        except OSError:
+            continue
+
+        removed_bytes += size
+
+    return removed_bytes
+
 
 
 @dataclass(frozen=True)
@@ -74,18 +146,7 @@ def enforce_cache_limit(
 
     entries = {}
 
-    try:
-        candidates = list(CACHE_DIR.iterdir())
-    except FileNotFoundError:
-        return CacheCleanupResult(0, 0, 0)
-    except OSError as error:
-        print(f"Could not inspect audio cache: {error}")
-        return CacheCleanupResult(0, 0, 0)
-
-    for path in candidates:
-        if not path.is_file() or path.suffix.lower() not in {".wav", ".json"}:
-            continue
-
+    for path in _iter_cache_files():
         try:
             stat = path.stat()
         except OSError as error:

@@ -5,13 +5,16 @@ import soundfile as sf
 import numpy as np
 
 from pathlib import Path
-from kokoro import KPipeline
+from huggingface_hub import hf_hub_download
+from kokoro import KModel, KPipeline
 
 import torch
 from reader.models import TextCue
 from reader.paths import cache_dir
 
 
+KOKORO_REPO_ID = "hexgrad/Kokoro-82M"
+KOKORO_REVISION = "f3ff3571791e39611d31c381e3a41a3af07b4987"
 CACHE_DIR = cache_dir()
 
 # Kokoro synthesizes on the reader's background worker. Left at its default,
@@ -54,10 +57,44 @@ class KokoroTTS:
         self.voice = voice
         self.speed = speed
 
+        config_path = hf_hub_download(
+            repo_id=KOKORO_REPO_ID,
+            filename="config.json",
+            revision=KOKORO_REVISION,
+        )
+        model_path = hf_hub_download(
+            repo_id=KOKORO_REPO_ID,
+            filename=KModel.MODEL_NAMES[KOKORO_REPO_ID],
+            revision=KOKORO_REVISION,
+        )
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model = KModel(
+            repo_id=KOKORO_REPO_ID,
+            config=config_path,
+            model=model_path,
+        ).to(device).eval()
+
         self.pipeline = KPipeline(
             lang_code=lang_code,
-            repo_id="hexgrad/Kokoro-82M"
+            repo_id=KOKORO_REPO_ID,
+            model=model,
         )
+
+    def _resolve_voice(self, voice: str) -> str:
+        resolved = []
+        for part in voice.split(","):
+            part = part.strip()
+            if part.endswith(".pt"):
+                resolved.append(part)
+            else:
+                resolved.append(
+                    hf_hub_download(
+                        repo_id=KOKORO_REPO_ID,
+                        filename=f"voices/{part}.pt",
+                        revision=KOKORO_REVISION,
+                    )
+                )
+        return ",".join(resolved)
 
     def generate(
         self,
@@ -84,9 +121,10 @@ class KokoroTTS:
         if on_progress is not None:
             on_progress(0)
 
+        voice_path = self._resolve_voice(self.voice)
         generator = self.pipeline(
             text,
-            voice=self.voice,
+            voice=voice_path,
             speed=self.speed,
         )
 
