@@ -16,6 +16,10 @@
 
   const os = detectOS();
   document.documentElement.dataset.os = os;
+  const DOWNLOADS = {
+    windows: 'https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/releases/download/v0.1.0/BookTTSReader-0.1.0-Windows-x64-Setup.exe',
+    macos: 'https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/releases/download/v0.1.0/BookTTSReader-0.1.0-macOS-arm64.dmg',
+  };
   const components = [...document.querySelectorAll('[data-smart-download]')];
   let selected = os;
   let intelMac = false;
@@ -36,7 +40,7 @@
       const primary = installer ? platform === choice : fallback && platform === 'windows';
       link.classList.toggle('primary', primary && !link.classList.contains('pill-cta'));
       link.classList.toggle('secondary', !primary && !link.classList.contains('pill-cta'));
-      link.href = fallback ? '#download' : 'https://github.com/HADIASSEMANI/text-to-speech-pdf-reader/releases/latest';
+      link.href = fallback ? '#download' : (platform === 'windows' ? DOWNLOADS.windows : DOWNLOADS.macos);
       link.querySelector('.download-label').textContent = fallback ? 'Get the app'
         : `Download for ${platform === 'windows' ? 'Windows' : 'macOS'}`;
     });
