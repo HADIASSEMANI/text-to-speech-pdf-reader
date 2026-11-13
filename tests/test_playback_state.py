@@ -83,6 +83,8 @@ class ControllerTestCase(unittest.TestCase):
     SEGMENT_COUNT = 4
 
     def setUp(self):
+        from reader.database import get_connection, initialize_database
+
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
 
@@ -104,11 +106,9 @@ class ControllerTestCase(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-        from reader.database import initialize_database
-
         initialize_database()
 
-        with self._connection() as connection:
+        with get_connection() as connection:
             connection.execute(
                 "INSERT INTO books (path, title) VALUES ('/tmp/book.pdf', 'Book')"
             )
@@ -138,12 +138,6 @@ class ControllerTestCase(unittest.TestCase):
         self.player_patcher.start()
         self.addCleanup(self.player_patcher.stop)
 
-    @staticmethod
-    def _connection():
-        from reader.database import get_connection
-
-        return get_connection()
-
     def make_controller(self, **kwargs):
         from reader.controller import ReaderController
 
@@ -162,7 +156,9 @@ class ControllerTestCase(unittest.TestCase):
         return controller
 
     def saved_row(self):
-        with self._connection() as connection:
+        from reader.database import get_connection
+
+        with get_connection() as connection:
             return connection.execute(
                 "SELECT * FROM books WHERE id = 1"
             ).fetchone()

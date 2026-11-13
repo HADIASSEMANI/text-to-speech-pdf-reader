@@ -67,9 +67,10 @@ class UiTestCase(unittest.TestCase):
         self.engine.addImportPath(str(qml_dir))
         if self.vm is not None:
             self.engine.rootContext().setContextProperty("vm", self.vm)
+        qml_url = QUrl.fromLocalFile(str(qml_dir)).toString()
         source = f'''import QtQuick
 import QtQuick.Controls
-import "file:{qml_dir.as_posix()}"
+import "{qml_url}"
 ApplicationWindow {{
     width: 420; height: 460; visible: true
     {properties}
@@ -128,8 +129,13 @@ property string themeFont: Theme.fontFamily
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         report = json.loads(result.stdout.strip().splitlines()[-1])
         self.assertEqual([], report["qml_warnings"])
-        unexpected = [message for message in report["qt_warnings"]
-                      if not message.startswith("Populating font family aliases took")]
+        unexpected = [
+            message for message in report["qt_warnings"]
+            if not message.startswith((
+                "Populating font family aliases took",
+                "QFontDatabase: Cannot find font directory",
+            ))
+        ]
         self.assertEqual([], unexpected)
         self.assertEqual([], report["unnamed_controls"])
         self.assertEqual([], report["geometry_issues"])

@@ -1,4 +1,6 @@
+import contextlib
 import sqlite3
+from typing import Iterator
 
 from reader.paths import database_path
 
@@ -6,7 +8,8 @@ from reader.paths import database_path
 DATABASE_PATH = database_path()
 
 
-def get_connection() -> sqlite3.Connection:
+@contextlib.contextmanager
+def get_connection() -> Iterator[sqlite3.Connection]:
     DATABASE_PATH.parent.mkdir(
         parents=True,
         exist_ok=True
@@ -18,7 +21,14 @@ def get_connection() -> sqlite3.Connection:
 
     connection.row_factory = sqlite3.Row
 
-    return connection
+    try:
+        yield connection
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 
 
 # Ordered schema steps, applied once each and tracked in PRAGMA user_version.

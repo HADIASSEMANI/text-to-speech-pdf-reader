@@ -142,9 +142,10 @@ class ReaderPageTests(unittest.TestCase):
         self.vm.timer.stop()
         self.engine = QQmlApplicationEngine()
         self.engine.rootContext().setContextProperty('vm',self.vm)
+        qml_url = QUrl.fromLocalFile(str(resource_path('qml'))).toString()
         qml = f'''import QtQuick
 import QtQuick.Controls
-import "file:{resource_path('qml')}"
+import "{qml_url}"
 ApplicationWindow {{ width: 900; height: 700; visible: true
 ReaderPage {{ anchors.fill: parent; shown: true }} }}'''
         self.engine.loadData(qml.encode(),QUrl('file:///tmp/reader-test.qml'))

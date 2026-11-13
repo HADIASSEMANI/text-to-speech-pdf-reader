@@ -34,7 +34,7 @@ HARNESS = """
 import QtQuick
 import QtQuick.Controls
 
-import "file:{qml}"
+import "{qml}"
 
 ApplicationWindow {{
     id: window
@@ -95,7 +95,7 @@ class RemoveDialogTests(unittest.TestCase):
 
         source = Path(self.directory.name) / "harness.qml"
         source.write_text(
-            HARNESS.format(qml=self.qml_dir.as_posix()),
+            HARNESS.format(qml=QUrl.fromLocalFile(str(self.qml_dir)).toString()),
             encoding="utf-8",
         )
 
