@@ -45,6 +45,8 @@ Item {
 
                 Layout.fillWidth: true
 
+                Accessible.name: "Position in this passage"
+
                 from: 0
                 to: 1
 
@@ -76,31 +78,56 @@ Item {
 
             Button {
                 text: "Previous"
+
+                Accessible.name: "Previous passage"
+                Accessible.description: "Restarts this passage, or moves back "
+                                        + "when you are near its start"
+
                 onClicked: vm.previous()
             }
 
             Button {
                 text: "-15s"
+
+                Accessible.name: "Back fifteen seconds"
+
                 onClicked: vm.skipBack()
             }
 
             Button {
+                /*
+                   The label follows the controller's own state, so it can no
+                   longer say Play while audio is sounding. A passage that is
+                   still being prepared already counts as playing: the
+                   listener asked for it, and pressing again stops it.
+                */
                 text: vm.playing ? "Pause" : "Play"
+                highlighted: Qt.platform.os !== "osx"
 
-                highlighted: true
 
                 implicitWidth: Math.max(implicitContentWidth + 40, 110)
+
+                Accessible.name: vm.playing ? "Pause" : "Play"
+                Accessible.description: vm.playbackState === "preparing"
+                                        ? "Preparing audio for this passage"
+                                        : ""
 
                 onClicked: vm.togglePlay()
             }
 
             Button {
                 text: "+15s"
+
+                Accessible.name: "Forward fifteen seconds"
+
                 onClicked: vm.skipForward()
             }
 
             Button {
                 text: "Next"
+
+                Accessible.name: "Next passage"
+
                 onClicked: vm.next()
             }
         }

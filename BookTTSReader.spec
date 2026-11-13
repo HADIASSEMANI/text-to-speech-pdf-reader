@@ -1,5 +1,21 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
+import sys
+from pathlib import Path
+
 from PyInstaller.utils.hooks import collect_all
+
+# The release workflow passes the tag version; local builds use the default.
+APP_VERSION = os.environ.get('APP_VERSION') or '0.1.0'
+
+is_macos = sys.platform == 'darwin'
+codesign_identity = (os.environ.get('MACOS_CODESIGN_IDENTITY') or None) if is_macos else None
+entitlements_file = (os.environ.get('MACOS_ENTITLEMENTS_FILE') or None) if is_macos else None
+icon = None
+if sys.platform == 'win32':
+    icon = 'assets/app-icon.ico'
+elif is_macos and Path('assets/app-icon.icns').is_file():
+    icon = 'assets/app-icon.icns'
 
 datas = [
     ('qml', 'qml'),
@@ -44,21 +60,37 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon='assets/app-icon.ico',
+    codesign_identity=codesign_identity,
+    entitlements_file=entitlements_file,
+    icon=icon,
 )
 coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name='BookTTSReader',
 )
+
+if is_macos:
+    app = BUNDLE(
+        coll,
+        name='Book TTS Reader.app',
+        icon=icon,
+        bundle_identifier='com.assemani.BookTTSReader',
+        version=APP_VERSION,
+        info_plist={
+            'CFBundleShortVersionString': APP_VERSION,
+            'NSHighResolutionCapable': True,
+            'LSMinimumSystemVersion': '12.0',
+        },
+        codesign_identity=codesign_identity,
+        entitlements_file=entitlements_file,
+    )

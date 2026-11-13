@@ -1,0 +1,44 @@
+{
+  "text": {
+    "passage": "hyphenation",
+    "kind": "prose",
+    "guards": "Line-wrap hyphens that must be repaired (under-standing) beside genuine compounds that must survive (well-known, twenty-three, self-evident).",
+    "source_pages": 1,
+    "source_chars": 188,
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "text_is_faithful": true,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 222,
+        "text": "The well-known difficulty is not a lack of under- standing but a lack of patience. Twenty-three separate attempts were made before the self-evident answer was recorded, and the com- mittee never published the earlier ones."
+      }
+    ]
+  },
+  "pdf": {
+    "passage": "hyphenation",
+    "source": "pdf",
+    "segment_count": 1,
+    "pages_covered": [
+      1
+    ],
+    "block_counts": [
+      1
+    ],
+    "coverage": 1.0,
+    "text_is_faithful": true,
+    "unexpected_chars": 0,
+    "segments": [
+      {
+        "index": 0,
+        "page": 1,
+        "chars": 222,
+        "text": "The well-known difficulty is not a lack of under- standing but a lack of patience. Twenty-three separate attempts were made before the self-evident answer was recorded, and the com- mittee never published the earlier ones."
+      }
+    ]
+  }
+}

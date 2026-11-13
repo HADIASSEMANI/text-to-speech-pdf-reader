@@ -25,15 +25,27 @@ Item {
 
     readonly property bool narrow: width < Theme.narrowWidth
 
+    // Where focus should land after a dialog closes.
+    property alias primaryAction: openButton
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: root.narrow ? Theme.spacing : Theme.pageMargin
 
         spacing: Theme.spacingLarge
 
-        RowLayout {
+        /*
+           On a narrow window the title and three buttons cannot share a row
+           without the title being squeezed to nothing, so the actions drop
+           to their own line instead of clipping.
+        */
+        GridLayout {
             Layout.fillWidth: true
-            spacing: Theme.spacingSmall
+
+            columns: root.narrow ? 1 : 2
+
+            columnSpacing: Theme.spacingSmall
+            rowSpacing: Theme.spacingSmall
 
             Label {
                 text: "Your Library"
@@ -47,21 +59,40 @@ Item {
                 elide: Label.ElideRight
             }
 
-            Button {
-                text: "Settings"
-                onClicked: vm.showSettings()
-            }
+            Flow {
+                Layout.fillWidth: root.narrow
+                Layout.alignment: root.narrow
+                                  ? Qt.AlignLeft
+                                  : Qt.AlignRight | Qt.AlignVCenter
 
-            Button {
-                text: "Paste Text"
-                onClicked: root.pasteRequested()
-            }
+                spacing: Theme.spacingSmall
 
-            Button {
-                text: "Open Book"
-                highlighted: true
+                Button {
+                    text: "Settings"
 
-                onClicked: root.openRequested()
+                    Accessible.name: "Settings"
+
+                    onClicked: vm.showSettings()
+                }
+
+                Button {
+                    text: "Paste Text"
+
+                    Accessible.name: "Read pasted text"
+
+                    onClicked: root.pasteRequested()
+                }
+
+                Button {
+                    id: openButton
+
+                    text: "Open Book"
+                    highlighted: Qt.platform.os !== "osx"
+
+                    Accessible.name: "Open a book"
+
+                    onClicked: root.openRequested()
+                }
             }
         }
 
@@ -95,6 +126,11 @@ Item {
                     fileType: model.fileType
                     missing: model.missing
 
+                    onActiveFocusChanged: {
+                        if (activeFocus)
+                            view.positionViewAtIndex(index, GridView.Contain)
+                    }
+
                     onOpened: vm.openBook(model.path)
                     onDeleted: vm.requestDelete(model.path, model.title)
                 }
@@ -107,6 +143,9 @@ Item {
 
                 visible: view.count === 0
 
+                width: parent.width
+                wrapMode: Label.Wrap
+                horizontalAlignment: Label.AlignHCenter
                 text: "No books or texts yet. Open a book or paste text to begin."
 
                 color: Theme.textFaint

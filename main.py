@@ -15,13 +15,14 @@ from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 
+from reader.cache import clear_all_cache
 from reader.database import initialize_database
-from reader.paths import resource_path
+from reader.paths import is_frozen, resource_path
 from reader.viewmodel.app_viewmodel import AppViewModel
 
 
 def _apply_style():
-    """Pick the Windows 11 look, and fall back where it is not shipped.
+    """Keep the Windows look; use palette-driven desktop controls on macOS.
 
     FluentWinUI3 only exists from Qt 6.8, and it does not implement every
     control, so the fallback draws a good part of what is on screen. Universal
@@ -32,11 +33,35 @@ def _apply_style():
     application. Naming the theme fixes that dialog without touching how any
     control is shaped.
     """
+    # Native macOS controls follow system appearance and cannot reliably use
+    # our fixed palette. Fusion accepts the Theme palette, including dialogs.
+    if sys.platform == "darwin":
+        QQuickStyle.setStyle("Fusion")
+        QQuickStyle.setFallbackStyle("Basic")
+        return
+
     os.environ.setdefault("QT_QUICK_CONTROLS_UNIVERSAL_THEME", "Dark")
     os.environ.setdefault("QT_QUICK_CONTROLS_UNIVERSAL_ACCENT", "#6695ff")
 
     QQuickStyle.setStyle("FluentWinUI3")
     QQuickStyle.setFallbackStyle("Universal")
+
+
+def _purge_development_cache():
+    """Drop generated audio on exit so a development run starts clean.
+
+    Packaged builds keep their cache, which is the behaviour the reader is
+    designed around. Set ``BOOKTTS_KEEP_CACHE=1`` to keep it here too, which
+    is worth doing while debugging: regenerating a segment costs several
+    seconds of synthesis.
+    """
+    if is_frozen():
+        return
+
+    if os.environ.get("BOOKTTS_KEEP_CACHE", "").strip().lower() in {"1", "true", "yes"}:
+        return
+
+    clear_all_cache()
 
 
 def main():
@@ -74,6 +99,10 @@ def main():
     # The window is gone by the time this runs, so the controller shuts down
     # here rather than in a closing handler.
     app.aboutToQuit.connect(view_model.shutdown)
+
+    # Connected second, and Qt runs slots in connection order, so the player
+    # has already released its files by the time the cache is purged.
+    app.aboutToQuit.connect(_purge_development_cache)
 
     return app.exec()
 

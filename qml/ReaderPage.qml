@@ -9,6 +9,8 @@ Item {
 
     property bool shown: false
 
+    signal shortcutsRequested()
+
     opacity: shown ? 1 : 0
     visible: opacity > 0
     enabled: shown
@@ -41,7 +43,14 @@ Item {
         }
     }
 
+    onShownChanged: {
+        if (shown)
+            Qt.callLater(root.showHighlight)
+    }
+
     function ensureHighlightVisible() {
+        if (vm.highlightEnd <= vm.highlightStart)
+            return
         const flick = scroll.contentItem
 
         if (flick.contentHeight <= flick.height)
@@ -68,6 +77,7 @@ Item {
         }
 
         function onSegmentChanged() {
+            body.loadSegment()
             body.deselect()
             scroll.contentItem.contentY = 0
         }
@@ -87,6 +97,9 @@ Item {
                 text: "Library"
                 flat: true
 
+                Accessible.name: "Back to library"
+                Accessible.description: "Closes this book and saves your place"
+
                 onClicked: vm.showLibrary()
             }
 
@@ -104,8 +117,23 @@ Item {
             }
 
             Button {
+                text: "?"
+                flat: true
+
+                // The shortcuts exist either way; this is how they are found.
+                ToolTip.visible: hovered
+                ToolTip.text: "Keyboard shortcuts"
+
+                Accessible.name: "Keyboard shortcuts"
+
+                onClicked: root.shortcutsRequested()
+            }
+
+            Button {
                 text: "Settings"
                 flat: true
+
+                Accessible.name: "Settings"
 
                 onClicked: vm.showSettings()
             }
@@ -135,7 +163,93 @@ Item {
                          ? "Chapters"
                          : currentText.trim()
 
+            Accessible.name: "Chapter"
+            Accessible.description: "Jump to a chapter. Playback stops so you "
+                                    + "can start reading when you are ready."
+
             onActivated: (index) => vm.goToChapter(index)
+        }
+
+        /*
+           Audio preparation used to replace this whole screen. It reports
+           in place instead, so the passage stays readable while it is being
+           synthesized and the listener keeps a way out of it.
+        */
+        Rectangle {
+            id: preparationStrip
+
+            visible: vm.preparing || vm.preparingError !== ""
+
+            Layout.fillWidth: true
+
+            implicitHeight: preparationRow.implicitHeight + Theme.spacing * 2
+
+            color: Theme.surface
+            radius: Theme.radius
+
+            border.width: 1
+            border.color: vm.preparingError !== "" ? Theme.danger : Theme.border
+
+            RowLayout {
+                id: preparationRow
+
+                anchors.fill: parent
+                anchors.margins: Theme.spacing
+
+                spacing: Theme.spacing
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: Theme.spacingTight
+
+                    Label {
+                        text: vm.preparingError !== ""
+                              ? vm.preparingError
+                              : vm.preparingMessage
+
+                        color: vm.preparingError !== ""
+                               ? Theme.danger
+                               : Theme.textMuted
+
+                        wrapMode: Label.Wrap
+                        Layout.fillWidth: true
+                    }
+
+                    ProgressBar {
+                        visible: vm.preparing
+
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: 360
+
+                        from: 0
+                        to: 100
+                        value: vm.preparingProgress
+
+                        Accessible.name: "Preparation progress"
+                    }
+                }
+
+                Button {
+                    text: "Cancel"
+                    flat: true
+
+                    visible: vm.preparing
+
+                    Accessible.name: "Cancel audio preparation"
+
+                    onClicked: vm.cancelPreparation()
+                }
+
+                Button {
+                    text: "Try again"
+
+                    visible: vm.preparingError !== ""
+
+                    Accessible.name: "Try preparing this passage again"
+
+                    onClicked: vm.retryPreparation()
+                }
+            }
         }
 
         Rectangle {
@@ -158,8 +272,24 @@ Item {
 
                 TextArea {
                     id: body
+                    objectName: "readerBody"
 
-                    text: vm.segmentText
+                    /*
+                       Rich text, so a heading reads as a heading and a
+                       superscript is a superscript. The markup carries the
+                       same characters as `segmentText`, which is what keeps
+                       the narration highlight and click-to-read lined up.
+                    */
+                    function loadSegment() {
+                        // Set format BEFORE content. Independent bindings
+                        // can reinterpret a new plain passage as HTML while
+                        // switching from an EPUB, losing tags and line breaks.
+                        textFormat = vm.segmentHtml ? TextArea.RichText : TextArea.PlainText
+                        text = vm.segmentHtml || vm.segmentText
+                        Qt.callLater(root.showHighlight)
+                    }
+
+                    Component.onCompleted: loadSegment()
 
                     readOnly: true
                     wrapMode: TextArea.Wrap
@@ -174,7 +304,13 @@ Item {
                     selectionColor: Theme.highlight
                     selectedTextColor: Theme.highlightText
 
-                    font.pixelSize: Theme.fontSizeReader
+                    // Rendering only: never reload or rewrite segment content.
+                    font.pixelSize: vm.textSize
+                    onFontChanged: Qt.callLater(root.showHighlight)
+                    onContentHeightChanged: Qt.callLater(root.ensureHighlightVisible)
+
+                    Accessible.role: Accessible.StaticText
+                    Accessible.name: "Passage being read"
 
                     // The style centres a short segment and sets its own
                     // paddings, so both are stated here rather than through
@@ -186,8 +322,7 @@ Item {
 
                     // Caps the line length on a wide window and centres the
                     // column, instead of running prose the full 1100px.
-                    leftPadding: Math.max(Theme.spacingLarge,
-                                          (scroll.width - 760) / 2)
+                    leftPadding: Math.max(28, (scroll.width - 760) / 2)
                     rightPadding: leftPadding
 
                     background: null
@@ -241,6 +376,9 @@ Item {
 
                     value: vm.currentPage
                     editable: true
+
+                    Accessible.name: "Page number"
+                    Accessible.description: "Go to a page. Playback stops."
 
                     onValueModified: vm.goToPage(value)
                 }

@@ -22,6 +22,13 @@ ApplicationWindow {
     font.family: Theme.fontFamily
     font.pixelSize: Theme.fontSizeBody
 
+    Binding {
+        target: window
+        property: "palette"
+        value: Theme.darkPalette
+        when: Qt.platform.os === "osx"
+    }
+
     onClosing: vm.shutdown()
 
     /*
@@ -35,6 +42,8 @@ ApplicationWindow {
         anchors.fill: parent
 
         LibraryPage {
+            id: libraryPage
+
             anchors.fill: parent
             shown: vm.page === "library"
             onOpenRequested: fileDialog.open()
@@ -51,6 +60,8 @@ ApplicationWindow {
 
             anchors.fill: parent
             shown: vm.page === "reader"
+
+            onShortcutsRequested: shortcutsDialog.open()
         }
 
         SettingsPage {
@@ -78,6 +89,7 @@ ApplicationWindow {
 
     Dialog {
         id: pasteDialog
+        objectName: "pasteDialog"
 
         anchors.centerIn: parent
         width: Math.min(720, window.width - 48)
@@ -88,6 +100,8 @@ ApplicationWindow {
         standardButtons: Dialog.Ok | Dialog.Cancel
 
         onOpened: {
+            standardButton(Dialog.Ok).Accessible.name = "Read pasted text"
+            standardButton(Dialog.Cancel).Accessible.name = "Cancel pasting text"
             standardButton(Dialog.Ok).enabled = Qt.binding(function() {
                 return pastedText.text.trim().length > 0
             })
@@ -110,6 +124,7 @@ ApplicationWindow {
 
             TextField {
                 id: textTitle
+                Accessible.name: "Title (optional)"
                 Layout.fillWidth: true
                 placeholderText: "Uses the first line when left blank"
                 maximumLength: 80
@@ -127,6 +142,7 @@ ApplicationWindow {
 
                 TextArea {
                     id: pastedText
+                    Accessible.name: "Text to read aloud"
                     placeholderText: "Paste or type the text you want read aloud..."
                     wrapMode: TextArea.Wrap
                     selectByMouse: true
@@ -144,6 +160,8 @@ ApplicationWindow {
 
     Dialog {
         id: errorDialog
+        objectName: "errorDialog"
+        onOpened: standardButton(Dialog.Ok).Accessible.name = "Dismiss error"
 
         property string message: ""
 
@@ -152,33 +170,98 @@ ApplicationWindow {
         modal: true
         standardButtons: Dialog.Ok
 
-        Label {
-            text: errorDialog.message
-            wrapMode: Label.Wrap
-            width: Math.min(implicitWidth, window.width - 120)
+        width: Math.min(520, window.width - 48)
+        height: Math.min(implicitHeight, window.height - 48)
+
+        contentItem: ScrollView {
+            id: errorScroll
+            clip: true
+            contentWidth: availableWidth
+
+            Label {
+                width: errorScroll.availableWidth
+                text: errorDialog.message
+                textFormat: Text.PlainText
+                wrapMode: Label.Wrap
+            }
         }
     }
 
-    Dialog {
+    RemoveBookDialog {
         id: deleteDialog
 
-        property string path: ""
-        property string bookTitle: ""
+        returnFocusTo: libraryPage.primaryAction
+
+        // One handler, so the removal runs exactly once however the dialog
+        // was accepted.
+        onAccepted: vm.deleteBook(path)
+    }
+
+    /*
+       Shortcuts are only useful if they can be found. This is what F1 and
+       the "?" key open, and what the reader's keyboard hint points at.
+    */
+    Dialog {
+        id: shortcutsDialog
+        objectName: "shortcutsDialog"
+        width: Math.min(520, window.width - 48)
+        height: Math.min(implicitHeight, window.height - 48)
+        onOpened: standardButton(Dialog.Ok).Accessible.name = "Close keyboard shortcuts"
 
         anchors.centerIn: parent
 
-        title: "Remove book"
+        title: "Keyboard shortcuts"
 
         modal: true
-        standardButtons: Dialog.Yes | Dialog.No
+        standardButtons: Dialog.Ok
 
-        onAccepted: vm.deleteBook(path)
+        contentItem: ScrollView {
+            id: shortcutsScroll
+            clip: true
+            contentWidth: availableWidth
 
-        Label {
-            text: "Remove \"" + deleteDialog.bookTitle + "\" from your library?\n\n"
-                  + "The original book file will not be deleted."
-            wrapMode: Label.Wrap
-            width: Math.min(implicitWidth, window.width - 120)
+            ColumnLayout {
+                width: shortcutsScroll.availableWidth
+                spacing: Theme.spacingTight
+
+                Repeater {
+                    model: [
+                        { keys: "Space", action: "Play or pause" },
+                        { keys: "\u2190 / \u2192", action: "Previous or next passage" },
+                        { keys: "Shift \u2190 / \u2192", action: "Skip 15 seconds" },
+                        { keys: Theme.shortcutLabel("L", Qt.platform.os), action: "Go to page" },
+                        { keys: Theme.shortcutLabel("O", Qt.platform.os), action: "Open a book" },
+                        { keys: "Esc", action: "Back to the library" },
+                        { keys: "F1 or ?", action: "Show this list" }
+                    ]
+
+                    delegate: RowLayout {
+                        required property var modelData
+
+                        Layout.fillWidth: true
+
+                        spacing: Theme.spacingLarge
+
+                        Label {
+                            text: modelData.keys
+
+                            color: Theme.text
+                            font.family: "monospace"
+
+                            Layout.minimumWidth: 110
+                        }
+
+                        Label {
+                            text: modelData.action
+                            wrapMode: Label.Wrap
+
+                            color: Theme.textMuted
+
+                            Layout.fillWidth: true
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -238,5 +321,22 @@ ApplicationWindow {
         sequence: "Ctrl+L"
         enabled: vm.page === "reader"
         onActivated: readerPage.focusPageField()
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: vm.page === "reader"
+        onActivated: vm.showLibrary()
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: vm.page === "settings"
+        onActivated: vm.closeSettings()
+    }
+
+    Shortcut {
+        sequences: ["F1", "?"]
+        onActivated: shortcutsDialog.open()
     }
 }

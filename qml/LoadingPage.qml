@@ -57,6 +57,8 @@ Item {
         }
 
         ProgressBar {
+            Accessible.name: "Book loading progress"
+            Accessible.description: vm.loadingStatus
             from: 0
             to: 100
             value: vm.loadingProgress

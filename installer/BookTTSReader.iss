@@ -1,6 +1,8 @@
 #define MyAppName "Book TTS Reader"
+#ifndef MyAppVersion
 #define MyAppVersion "0.1.0"
-#define MyAppPublisher "Hadia"
+#endif
+#define MyAppPublisher "Hadi Assemani"
 #define MyAppExeName "BookTTSReader.exe"
 
 [Setup]
@@ -8,6 +10,9 @@ AppId={{A912B4A8-6CB7-4D31-9E6D-675DC37A12F8}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
+AppPublisherURL=https://github.com/HADIASSEMANI/text-to-speech-pdf-reader
+AppSupportURL=https://github.com/HADIASSEMANI/text-to-speech-pdf-reader
+LicenseFile=LICENSE
 DefaultDirName={localappdata}\Programs\BookTTSReader
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes

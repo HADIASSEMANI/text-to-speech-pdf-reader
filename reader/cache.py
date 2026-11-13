@@ -5,6 +5,78 @@ from pathlib import Path
 from reader.paths import cache_dir
 
 CACHE_DIR = cache_dir()
+_CACHE_SUFFIXES = {".wav", ".json"}
+
+
+def _is_temporary_cache_file(path: Path) -> bool:
+    """True for in-flight atomic writes (``<stem>.part.wav`` / ``.part.json``)."""
+    name = path.name.lower()
+    return name.endswith(".part.wav") or name.endswith(".part.json")
+
+
+def _iter_cache_files():
+    """Yield finished generated WAV and cue files in ``CACHE_DIR``."""
+    try:
+        candidates = list(CACHE_DIR.iterdir())
+    except OSError:
+        return
+
+    for path in candidates:
+        if (
+            not path.is_file()
+            or path.suffix.lower() not in _CACHE_SUFFIXES
+            or _is_temporary_cache_file(path)
+        ):
+            continue
+        yield path
+
+
+def audio_cache_size() -> int:
+    """Return total bytes used by generated WAV and cue files in ``CACHE_DIR``."""
+    total = 0
+
+    for path in _iter_cache_files():
+        try:
+            total += path.stat().st_size
+        except OSError:
+            continue
+
+    return total
+
+
+def clear_audio_cache(keep=()) -> int:
+    """Delete generated WAV and cue files in ``CACHE_DIR``, returning bytes freed.
+
+    Paths (or their stems) passed in ``keep`` and in-progress ``.part`` files
+    are preserved. Files that cannot be deleted are skipped silently.
+    """
+    keep_paths = set()
+    keep_stems = set()
+
+    for item in keep:
+        if not item:
+            continue
+        p = Path(item)
+        keep_paths.add(p)
+        if p.suffix.lower() in _CACHE_SUFFIXES:
+            keep_stems.add(p.stem)
+
+    removed_bytes = 0
+
+    for path in _iter_cache_files():
+        if path in keep_paths or path.stem in keep_stems:
+            continue
+
+        try:
+            size = path.stat().st_size
+            path.unlink()
+        except OSError:
+            continue
+
+        removed_bytes += size
+
+    return removed_bytes
+
 
 
 @dataclass(frozen=True)
@@ -14,9 +86,31 @@ class CacheCleanupResult:
     remaining_bytes: int
 
 
-def create_cache_id(text: str, voice: str, speed: float = 1.0) -> str:
+# Bumped whenever the text handed to the speech model can change for the
+# same book: new extraction, new pronunciation rules, new pause handling.
+# Old entries are not deleted; they simply stop being asked for, and the
+# usual size cleanup retires them.
+#
+#   1 - flat PyMuPDF text
+#   2 - structured extraction: headings, one production per line, real
+#       superscripts, equations as their own blocks
+#   3 - single-pass EPUB flow, canonical whitespace, spoken-text synthesis
+NARRATION_VERSION = 3
 
-    content = f"{voice}:{speed}:{text}"
+
+def create_cache_id(
+    text: str,
+    voice: str,
+    speed: float = 1.0,
+    version: int = NARRATION_VERSION,
+) -> str:
+    """Identify generated audio by everything that determines how it sounds.
+
+    ``text`` is the *spoken* text, not the displayed text: once an equation
+    is shown as notation and read as a sentence, the notation is no longer
+    what the audio contains.
+    """
+    content = f"v{version}:{voice}:{speed}:{text}"
 
     return hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
 
@@ -52,18 +146,7 @@ def enforce_cache_limit(
 
     entries = {}
 
-    try:
-        candidates = list(CACHE_DIR.iterdir())
-    except FileNotFoundError:
-        return CacheCleanupResult(0, 0, 0)
-    except OSError as error:
-        print(f"Could not inspect audio cache: {error}")
-        return CacheCleanupResult(0, 0, 0)
-
-    for path in candidates:
-        if not path.is_file() or path.suffix.lower() not in {".wav", ".json"}:
-            continue
-
+    for path in _iter_cache_files():
         try:
             stat = path.stat()
         except OSError as error:
@@ -155,6 +238,66 @@ def enforce_cache_limit(
         removed_entries,
         removed_bytes,
         total_bytes,
+    )
+
+
+def clear_all_cache() -> CacheCleanupResult:
+    """Delete every generated WAV and cue file in the cache directory.
+
+    Used by development builds on application exit so a run never inherits
+    audio from an earlier one. Packaged builds keep their cache; see
+    ``is_frozen`` in ``reader.paths``. Call this only once playback has shut
+    down, or the player may still hold a file open.
+    """
+    removed_entries = 0
+    removed_bytes = 0
+    remaining_bytes = 0
+
+    try:
+        candidates = list(CACHE_DIR.iterdir())
+    except FileNotFoundError:
+        return CacheCleanupResult(0, 0, 0)
+    except OSError as error:
+        print(f"Could not inspect audio cache: {error}")
+        return CacheCleanupResult(0, 0, 0)
+
+    for path in candidates:
+        if not path.is_file() or path.suffix.lower() not in {".wav", ".json"}:
+            continue
+
+        try:
+            size = path.stat().st_size
+            path.unlink()
+        except FileNotFoundError:
+            continue
+        except OSError as error:
+            # A file still held open survives the purge rather than failing
+            # the shutdown. The next run reuses it, which is harmless.
+            print(f"Could not remove cache file {path}: {error}")
+
+            try:
+                remaining_bytes += path.stat().st_size
+            except OSError:
+                pass
+
+            continue
+
+        removed_bytes += size
+
+        if path.suffix.lower() == ".wav":
+            removed_entries += 1
+
+    if removed_entries or removed_bytes:
+        freed_mb = removed_bytes / (1024 * 1024)
+        print(
+            f"Development build: cleared {removed_entries} cached segment(s) "
+            f"and freed {freed_mb:.1f} MB."
+        )
+
+    return CacheCleanupResult(
+        removed_entries,
+        removed_bytes,
+        remaining_bytes,
     )
 
 

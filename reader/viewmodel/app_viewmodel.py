@@ -1,4 +1,3 @@
-import time
 from pathlib import Path
 
 from PySide6.QtCore import (
@@ -12,8 +11,12 @@ from PySide6.QtCore import (
 )
 
 from reader.book_loader_worker import BookLoaderWorker
-from reader.cache import enforce_cache_limit
-from reader.controller import ReaderController
+from reader.cache import (
+    audio_cache_size,
+    clear_audio_cache,
+    enforce_cache_limit,
+)
+from reader.controller import PlaybackState, ReaderController
 from reader.progress import remove_book
 from reader.settings import AppSettings
 from reader.text_source import save_pasted_text
@@ -33,6 +36,14 @@ class AppViewModel(QObject):
     READER = "reader"
     SETTINGS = "settings"
 
+    # A speed slider emits while it is being dragged. Wait for it to settle
+    # before re-keying the open book's audio.
+    NARRATION_APPLY_DELAY_MS = 400
+
+    # How far the skip buttons move. The controller carries any overflow
+    # into the neighbouring passage rather than clamping.
+    SKIP_SECONDS = 15
+
     pageChanged = Signal()
     loadingChanged = Signal()
     bookChanged = Signal()
@@ -41,6 +52,9 @@ class AppViewModel(QObject):
     playbackChanged = Signal()
     chaptersChanged = Signal()
     settingsChanged = Signal()
+    textSizeChanged = Signal()
+    cacheSizeChanged = Signal()
+    preparationChanged = Signal()
 
     errorRaised = Signal(str, str)
     deleteRequested = Signal(str, str)
@@ -60,12 +74,13 @@ class AppViewModel(QObject):
         self.loader_worker = None
         self.pending_book_path = None
 
-        self.audio_future = None
-        self.audio_ready_action = None
-        self.audio_segment_index = None
-
-        self.returning_to_library = False
-        self.library_return_started = 0.0
+        # Audio preparation is no longer a screen of its own. The reader
+        # stays visible and reports progress in place, so the text can still
+        # be read while the next passage is being synthesized.
+        self._preparing = False
+        self._preparing_progress = 0
+        self._preparing_message = ""
+        self._preparing_error = ""
 
         self._page = self.LIBRARY
 
@@ -76,24 +91,38 @@ class AppViewModel(QObject):
         self._book_title = "No book"
         self._status_text = "Page --"
         self._segment_text = ""
+        self._segment_html = ""
         self._current_page = 1
         self._max_page = 1
 
         self._cue_offsets = []
         self._cue_bounds = {}
+
+        # The cue list the offsets were built from. Cues arrive after the
+        # passage does — a cold segment gets them when synthesis finishes,
+        # on the same segment index — so the offsets cannot be rebuilt on
+        # segment change alone.
+        self._cue_source = None
         self._highlight_start = 0
         self._highlight_end = 0
 
         self._playing = False
+        self._playback_state = PlaybackState.STOPPED.value
         self._position = 0.0
         self._duration = 0.0
 
         self._chapter_titles = []
         self._current_chapter = -1
 
+        self._cache_size_bytes = 0
+
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._tick)
         self.timer.start(100)
+
+        self._narration_timer = QTimer(self)
+        self._narration_timer.setSingleShot(True)
+        self._narration_timer.timeout.connect(self._apply_narration_settings)
 
     # ------------------------------------------------------------------
     # properties
@@ -143,6 +172,15 @@ class AppViewModel(QObject):
     def segmentText(self):
         return self._segment_text
 
+    @Property(str, notify=segmentChanged)
+    def segmentHtml(self):
+        """The passage with its structure: headings, paragraphs, notation.
+
+        Carries exactly the characters of `segmentText`, so the character
+        ranges used for highlighting and click-to-read still line up.
+        """
+        return self._segment_html
+
     @Property(int, notify=segmentChanged)
     def currentPage(self):
         return self._current_page
@@ -171,6 +209,27 @@ class AppViewModel(QObject):
     def duration(self):
         return self._duration
 
+    @Property(str, notify=playbackChanged)
+    def playbackState(self):
+        """stopped, preparing, playing, paused or finished."""
+        return self._playback_state
+
+    @Property(bool, notify=preparationChanged)
+    def preparing(self):
+        return self._preparing
+
+    @Property(int, notify=preparationChanged)
+    def preparingProgress(self):
+        return self._preparing_progress
+
+    @Property(str, notify=preparationChanged)
+    def preparingMessage(self):
+        return self._preparing_message
+
+    @Property(str, notify=preparationChanged)
+    def preparingError(self):
+        return self._preparing_error
+
     @Property(list, notify=chaptersChanged)
     def chapterTitles(self):
         return self._chapter_titles
@@ -181,6 +240,25 @@ class AppViewModel(QObject):
 
     # settings ---------------------------------------------------------
 
+    @Property(int, constant=True)
+    def minimumTextSize(self):
+        return AppSettings.MIN_TEXT_SIZE
+
+    @Property(int, constant=True)
+    def maximumTextSize(self):
+        return AppSettings.MAX_TEXT_SIZE
+
+    @Property(int, notify=textSizeChanged)
+    def textSize(self):
+        return self.settings.get_text_size()
+
+    @textSize.setter
+    def textSize(self, value: int):
+        value = AppSettings.clamp_text_size(value)
+        if value != self.textSize:
+            self.settings.set_text_size(value)
+            self.textSizeChanged.emit()
+
     @Property(str, notify=settingsChanged)
     def voice(self):
         return self.settings.get_voice()
@@ -189,6 +267,7 @@ class AppViewModel(QObject):
     def voice(self, value: str):
         if value and value != self.settings.get_voice():
             self.settings.set_voice(value)
+            self._schedule_narration_update()
             self.settingsChanged.emit()
 
     @Property(float, notify=settingsChanged)
@@ -199,7 +278,32 @@ class AppViewModel(QObject):
     def speed(self, value: float):
         if abs(value - self.settings.get_speed()) > 1e-9:
             self.settings.set_speed(value)
+            self._schedule_narration_update()
             self.settingsChanged.emit()
+
+    def _schedule_narration_update(self):
+        """Apply voice and speed to the open book, once the slider settles.
+
+        Dragging a speed slider emits a value per frame. Applying each one
+        would re-key every segment and cancel the synthesis started by the
+        previous value, so the change is debounced and applied once.
+        """
+        if self.controller is None:
+            return
+
+        self._narration_timer.start(self.NARRATION_APPLY_DELAY_MS)
+
+    def _apply_narration_settings(self):
+        if self.controller is None:
+            return
+
+        changed = self.controller.apply_narration_settings(
+            voice=self.settings.get_voice(),
+            speed=self.settings.get_speed(),
+        )
+
+        if changed:
+            self._update_reader()
 
     @Property(bool, notify=settingsChanged)
     def readFootnotes(self):
@@ -247,6 +351,64 @@ class AppViewModel(QObject):
 
             self.settingsChanged.emit()
 
+    @Property(int, notify=cacheSizeChanged)
+    def cacheSizeBytes(self):
+        return self._cache_size_bytes
+
+    @Property(str, notify=cacheSizeChanged)
+    def cacheSizeText(self):
+        return self._format_cache_size(self._cache_size_bytes)
+
+    @staticmethod
+    def _format_cache_size(size_bytes: int) -> str:
+        if size_bytes <= 0:
+            return "Empty"
+
+        gb = size_bytes / (1024 * 1024 * 1024)
+        if gb >= 1.0:
+            return f"{gb:.1f} GB"
+
+        mb = size_bytes / (1024 * 1024)
+        if mb >= 10:
+            return f"{round(mb)} MB"
+        if mb >= 1.0:
+            return f"{mb:.1f} MB"
+
+        kb = max(1, round(size_bytes / 1024))
+        return f"{kb} KB"
+
+    def _refresh_cache_size(self, force_emit: bool = False):
+        changed = self._assign("_cache_size_bytes", audio_cache_size())
+
+        if changed or force_emit:
+            self.cacheSizeChanged.emit()
+
+    @Slot()
+    def clearCache(self):
+        keep = ()
+
+        if self.controller is not None:
+            keep = self.controller.get_current_cache_paths()
+
+        clear_audio_cache(keep=keep)
+
+        if self.controller is not None:
+            keep_stems = {Path(p).stem for p in keep if p}
+
+            for segment in self.controller.segments:
+                if not segment.audio_path:
+                    continue
+
+                audio = Path(segment.audio_path)
+
+                if audio.stem in keep_stems or audio.exists():
+                    continue
+
+                segment.generated = False
+                segment.cues = []
+
+        self._refresh_cache_size(force_emit=True)
+
     # ------------------------------------------------------------------
     # navigation between screens
     # ------------------------------------------------------------------
@@ -257,6 +419,7 @@ class AppViewModel(QObject):
 
     @Slot()
     def showSettings(self):
+        self._refresh_cache_size()
         self._set_page(self.SETTINGS)
 
     @Slot()
@@ -267,23 +430,30 @@ class AppViewModel(QObject):
 
     @Slot()
     def showLibrary(self):
-        if self.controller is not None:
-            self.controller.running = False
-            self.controller.player.stop()
+        """Close the book and show the library straight away.
 
-            self.returning_to_library = True
-            self.library_return_started = time.monotonic()
-
-            self._set_loading(
-                "Returning to library...",
-                "Finishing background audio work...",
-                0,
-            )
-
-            self._set_page(self.LOADING)
-            return
+        This used to hold a progress screen until every queued synthesis had
+        finished, which could be tens of seconds. The position is written
+        first, queued work is cancelled, and the audio device is closed
+        synchronously so the next book can open one. Whatever was already
+        being synthesized finishes on its own and lands in the cache.
+        """
+        self._close_book()
 
         self._display_library()
+
+    def _close_book(self):
+        if self.controller is None:
+            return
+
+        self._narration_timer.stop()
+
+        self.controller.shutdown()
+        self.controller = None
+
+        self._set_preparation(False, 0, "", "")
+
+        self.bookChanged.emit()
 
     def _display_library(self):
         self._books.refresh()
@@ -291,6 +461,9 @@ class AppViewModel(QObject):
         self._assign("_book_title", "No book")
         self._assign("_status_text", "Page --")
         self._assign("_segment_text", "")
+        self._assign("_segment_html", "")
+
+        self._cue_source = None
         self._set_cue_offsets([])
 
         self.bookChanged.emit()
@@ -298,12 +471,6 @@ class AppViewModel(QObject):
 
         self._set_page(self.LIBRARY)
 
-    def _finish_show_library(self):
-        if self.controller is not None:
-            self.controller.shutdown()
-            self.controller = None
-
-        self._display_library()
 
     # ------------------------------------------------------------------
     # opening books
@@ -351,10 +518,7 @@ class AppViewModel(QObject):
             self._display_library()
             return
 
-        if self.controller is not None:
-            self.controller.shutdown()
-            self.controller = None
-            self.bookChanged.emit()
+        self._close_book()
 
         self._set_loading("Loading book...", "Preparing book...", 0)
         self._set_page(self.LOADING)
@@ -473,65 +637,81 @@ class AppViewModel(QObject):
 
     @Slot()
     def togglePlay(self):
-        if self.controller is None:
-            return
+        """Ask the controller to change transport state, and show the result.
 
-        if not self.controller.running:
-            self._run_when_audio_ready(
-                self.controller.get_current_index(),
-                self.controller.start,
-            )
+        The interface no longer decides whether audio is ready: every
+        transition goes through ReaderController, which is the only thing
+        that knows. That is what stops the button and the audio disagreeing.
+        """
+        if self.controller is None:
             return
 
         self.controller.toggle_pause()
 
-        segment = self.controller.get_current_segment()
-
-        if segment is not None:
-            # Starting playback loads cached cues. Refresh offsets now so
-            # highlighting does not wait for a segment change.
-            self._set_cue_offsets(self._build_cue_offsets(segment))
-
-        self._update_playback()
+        self._update_reader()
 
     @Slot()
     def next(self):
         if self.controller is None:
             return
 
-        target = self.controller.get_current_index() + 1
+        self.controller.next()
 
-        if target >= len(self.controller.segments):
-            return
-
-        self._run_when_audio_ready(target, self.controller.next)
+        self._update_reader()
 
     @Slot()
     def previous(self):
         if self.controller is None:
             return
 
-        target = self.controller.get_current_index() - 1
+        self.controller.previous()
 
-        if target < 0:
-            return
-
-        self._run_when_audio_ready(target, self.controller.previous)
+        self._update_reader()
 
     @Slot()
     def skipForward(self):
-        if self.controller is not None:
-            self.controller.seek_relative(15)
+        if self.controller is None:
+            return
+
+        self.controller.seek_relative(self.SKIP_SECONDS)
+
+        self._update_reader()
 
     @Slot()
     def skipBack(self):
-        if self.controller is not None:
-            self.controller.seek_relative(-15)
+        if self.controller is None:
+            return
+
+        self.controller.seek_relative(-self.SKIP_SECONDS)
+
+        self._update_reader()
 
     @Slot(float)
     def seek(self, seconds: float):
         if self.controller is not None:
             self.controller.seek_to(seconds)
+
+    @Slot()
+    def cancelPreparation(self):
+        if self.controller is None:
+            return
+
+        self.controller.cancel_preparation()
+
+        self._set_preparation(False, 0, "", "")
+
+        self._update_playback()
+
+    @Slot()
+    def retryPreparation(self):
+        if self.controller is None:
+            return
+
+        self._set_preparation(False, 0, "", "")
+
+        self.controller.retry_preparation()
+
+        self._update_reader()
 
     @Slot(int)
     def seekToCharacter(self, offset: int):
@@ -566,32 +746,6 @@ class AppViewModel(QObject):
         if self.controller.go_to_chapter(chapter_index):
             self._update_reader()
 
-    def _run_when_audio_ready(self, segment_index: int, action):
-        if self.controller is None or self.audio_future is not None:
-            return
-
-        future = self.controller.prepare_segment_audio(segment_index)
-
-        if future is None:
-            action()
-
-            self._set_page(self.READER)
-            self._update_reader()
-            return
-
-        self.audio_future = future
-        self.audio_ready_action = action
-        self.audio_segment_index = segment_index
-
-        self._set_loading(
-            "Preparing audio...",
-            f"Generating segment {segment_index + 1} "
-            f"of {len(self.controller.segments)}...",
-            0,
-        )
-
-        self._set_page(self.LOADING)
-
     # ------------------------------------------------------------------
     # reader state
     # ------------------------------------------------------------------
@@ -624,6 +778,11 @@ class AppViewModel(QObject):
         changed = self._assign("_segment_text", segment.text)
 
         changed |= self._assign(
+            "_segment_html",
+            getattr(segment, "html", ""),
+        )
+
+        changed |= self._assign(
             "_status_text",
             f"Page {segment.page}  ·  Segment {index + 1} / {total}",
         )
@@ -631,9 +790,13 @@ class AppViewModel(QObject):
         changed |= self._assign("_current_page", segment.page)
 
         if changed:
+            # Two passages can begin with equal-length cues. Clearing the
+            # old bounds ensures the new cue emits a change after deselection.
+            self._highlight_start = self._highlight_end = 0
+            self.highlightChanged.emit()
             self.segmentChanged.emit()
 
-        self._set_cue_offsets(self._build_cue_offsets(segment))
+        self._refresh_cue_offsets(force=changed)
 
         chapter_index = self.controller.get_current_chapter_index()
 
@@ -651,33 +814,30 @@ class AppViewModel(QObject):
         The text is never rebuilt from cues: doing that collapses the
         paragraph spacing the reader adds for legibility.
         """
-        if not segment.cues:
-            return []
+        from reader.cue_mapping import map_cues
 
-        offsets = []
+        return map_cues(segment)
 
-        text = segment.text
-        search_position = 0
+    def _refresh_cue_offsets(self, force: bool = False):
+        """Map cues onto the displayed text whenever the cues change.
 
-        for cue in segment.cues:
-            cue_text = cue.text.strip()
+        Highlighting and click-to-read both read these offsets, so missing a
+        rebuild leaves the passage unhighlighted and clicks inert.
+        """
+        if self.controller is None:
+            return
 
-            if not cue_text:
-                continue
+        segment = self.controller.get_current_segment()
 
-            start = text.find(cue_text, search_position)
+        if segment is None:
+            return
 
-            # A cue that cannot be mapped is skipped rather than changing the
-            # displayed text and losing its original newlines.
-            if start == -1:
-                continue
+        if not force and segment.cues is self._cue_source:
+            return
 
-            end = start + len(cue_text)
+        self._cue_source = segment.cues
 
-            offsets.append((cue, start, end))
-            search_position = end
-
-        return offsets
+        self._set_cue_offsets(self._build_cue_offsets(segment))
 
     def _set_cue_offsets(self, offsets):
         self._cue_offsets = offsets
@@ -721,9 +881,15 @@ class AppViewModel(QObject):
 
         player = self.controller.player
 
-        playing = self.controller.running and not player.is_paused
+        # One source of truth. ``running`` covers playing and preparing, so
+        # a passage that is still being synthesized still reads as playing:
+        # the listener asked for it, and pressing the button again pauses.
+        changed = self._assign("_playing", self.controller.running)
 
-        changed = self._assign("_playing", playing)
+        changed |= self._assign(
+            "_playback_state",
+            self.controller.state.value,
+        )
 
         changed |= self._assign(
             "_position",
@@ -761,150 +927,69 @@ class AppViewModel(QObject):
         if self.controller is None:
             return
 
-        if self._poll_library_return():
-            return
-
-        if self._poll_audio_generation():
-            return
-
-        if self.controller.awaiting_audio and self.controller.running:
-            self._poll_pending_playback()
-            return
-
         previous_index = self.controller.get_current_index()
-
-        player = self.controller.player
-
-        if (
-            self.controller.running
-            and not player.is_paused
-            and not player.is_playing()
-            and previous_index < len(self.controller.segments) - 1
-        ):
-            self._run_when_audio_ready(
-                previous_index + 1,
-                self.controller.tick,
-            )
-
-            return
 
         self.controller.tick()
 
         if self.controller.get_current_index() != previous_index:
             self._update_reader()
 
+        self._refresh_cue_offsets()
+
+        self._update_preparation()
         self._update_highlight()
         self._update_playback()
 
-    def _poll_library_return(self) -> bool:
-        if not self.returning_to_library or self.controller is None:
-            return False
+    def _update_preparation(self):
+        """Report synthesis progress without taking the reader off screen."""
+        controller = self.controller
 
-        generating = [
-            index
-            for index, segment in enumerate(self.controller.segments)
-            if segment.id in self.controller.generating
-        ]
-
-        if generating:
-            progress = sum(
-                self.controller.get_generation_progress(index)
-                for index in generating
-            ) // len(generating)
-
-            self._set_loading_progress(progress)
-            return True
-
-        # Keep the transition visible briefly even when there is no pending
-        # generation, so returning to the library reads as a deliberate state.
-        if time.monotonic() - self.library_return_started < 0.35:
-            self._set_loading_progress(90)
-            return True
-
-        self._set_loading_progress(100)
-        self.returning_to_library = False
-
-        self._finish_show_library()
-
-        return True
-
-    def _poll_audio_generation(self) -> bool:
-        if self.audio_future is None:
-            return False
-
-        if not self.audio_future.done():
-            if self.audio_segment_index is not None:
-                self._set_loading_progress(
-                    self.controller.get_generation_progress(
-                        self.audio_segment_index
-                    )
-                )
-
-            return True
-
-        future = self.audio_future
-        action = self.audio_ready_action
-
-        self.audio_future = None
-        self.audio_ready_action = None
-        self.audio_segment_index = None
-
-        self._set_loading_progress(100)
-
-        try:
-            future.result()
-        except Exception as error:
-            self.controller.running = False
-
-            self._set_page(self.READER)
-            self.errorRaised.emit("Unable to generate audio", str(error))
-            self._update_reader()
-
-            return True
-
-        self._set_page(self.READER)
-
-        if action is not None:
-            action()
-
-        self._update_reader()
-
-        return True
-
-    def _poll_pending_playback(self):
-        """Show generation progress while the controller waits for its audio.
-
-        `play_current` never blocks, so a cache miss surfaces as a progress
-        screen rather than as a frozen window.
-        """
-        index = self.controller.get_current_index()
-
-        if self._page != self.LOADING:
-            self._set_loading(
-                "Preparing audio...",
-                f"Generating segment {index + 1} "
-                f"of {len(self.controller.segments)}...",
-                0,
-            )
-
-            self._set_page(self.LOADING)
-
-        self._set_loading_progress(
-            self.controller.get_generation_progress(index)
-        )
-
-        self.controller.tick()
-
-        if self.controller.awaiting_audio:
+        if controller is None:
             return
 
-        error = self.controller.take_generation_error()
-
-        self._set_page(self.READER)
-        self._update_reader()
+        error = controller.take_generation_error()
 
         if error is not None:
-            self.errorRaised.emit("Unable to generate audio", error)
+            self._set_preparation(
+                False,
+                0,
+                "",
+                f"This passage could not be prepared. {error}",
+            )
+
+            return
+
+        preparing = controller.state is PlaybackState.PREPARING
+
+        if not preparing:
+            if self._preparing:
+                self._set_preparation(False, 0, "", self._preparing_error)
+
+            return
+
+        index = controller.get_current_index()
+
+        self._set_preparation(
+            True,
+            controller.get_generation_progress(index),
+            f"Preparing passage {index + 1} of {len(controller.segments)}",
+            "",
+        )
+
+    def _set_preparation(
+        self,
+        preparing: bool,
+        progress: int,
+        message: str,
+        error: str,
+    ):
+        changed = self._assign("_preparing", preparing)
+        changed |= self._assign("_preparing_progress", progress)
+        changed |= self._assign("_preparing_message", message)
+        changed |= self._assign("_preparing_error", error)
+
+        if changed:
+            self.preparationChanged.emit()
 
     # ------------------------------------------------------------------
     # shutdown
@@ -922,8 +1007,12 @@ class AppViewModel(QObject):
             self.loader_thread.quit()
             self.loader_thread.wait()
 
+        self._narration_timer.stop()
+
         if self.controller is not None:
-            self.controller.shutdown()
+            # Application exit is the one place worth waiting: it lets the
+            # passage being synthesized finish and land in the cache.
+            self.controller.shutdown(wait=True)
             self.controller = None
         else:
             enforce_cache_limit(

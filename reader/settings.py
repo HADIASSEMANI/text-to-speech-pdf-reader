@@ -10,9 +10,28 @@ class AppSettings:
     DEFAULT_VOICE = "af_heart"
     DEFAULT_SPEED = 0.85
     DEFAULT_CACHE_LIMIT_MB = 1024
+    DEFAULT_TEXT_SIZE = 18
+    MIN_TEXT_SIZE = 14
+    MAX_TEXT_SIZE = 32
 
     def __init__(self):
         self.settings = QSettings(self.ORGANIZATION, self.APPLICATION)
+
+    @classmethod
+    def clamp_text_size(cls, value) -> int:
+        try:
+            size = int(value)
+        except (TypeError, ValueError, OverflowError):
+            size = cls.DEFAULT_TEXT_SIZE
+        return max(cls.MIN_TEXT_SIZE, min(cls.MAX_TEXT_SIZE, size))
+
+    def get_text_size(self) -> int:
+        return self.clamp_text_size(
+            self.settings.value("reader/text_size", self.DEFAULT_TEXT_SIZE)
+        )
+
+    def set_text_size(self, size: int):
+        self.settings.setValue("reader/text_size", self.clamp_text_size(size))
 
     # -------------------------
     # Voice
