@@ -244,3 +244,10 @@ __marimo__/
 # Local agent tooling
 .context-feeder/
 .claude/
+
+# AI assistant files
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.remember/
+docs/swiftui-plan.md
